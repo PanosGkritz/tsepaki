@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -59,6 +59,17 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     `);
 
     currentVersion = 2;
+  }
+
+  if (currentVersion === 2) {
+    await db.execAsync(`
+      UPDATE subscriptions
+      SET service_id = 'telekom', domain = 'telekom.gr', color = '#E20074',
+          name = CASE WHEN name = 'Cosmote' THEN 'Telekom' ELSE name END
+      WHERE service_id = 'cosmote';
+    `);
+
+    currentVersion = 3;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

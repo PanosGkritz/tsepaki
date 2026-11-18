@@ -47,7 +47,7 @@ const ChargeRow = ({ subscription, showDivider }: ChargeRowProps) => {
         id={subscription.serviceId ?? subscription.id}
         name={subscription.name}
         fallbackColor={subscription.color}
-        domain={subscription.domain}
+        domain={subscription.serviceId ? undefined : subscription.domain}
         size={42}
       />
 
