@@ -1,0 +1,58 @@
+import type { Subscription } from '../types/subscription';
+
+export const mockSubscriptions: Subscription[] = [
+  {
+    id: 'netflix',
+    name: 'Netflix',
+    price: 13.99,
+    cycle: 'monthly',
+    nextChargeDate: '2026-11-19',
+    color: '#9E1B22',
+    category: 'Streaming',
+  },
+  {
+    id: 'spotify',
+    name: 'Spotify',
+    price: 11.99,
+    cycle: 'monthly',
+    nextChargeDate: '2026-11-22',
+    color: '#2E8B57',
+    category: 'Μουσική',
+  },
+  {
+    id: 'cosmote',
+    name: 'Cosmote',
+    price: 25,
+    cycle: 'monthly',
+    nextChargeDate: '2026-11-25',
+    color: '#3D7A3A',
+    category: 'Κινητό',
+  },
+  {
+    id: 'xbox',
+    name: 'Xbox Game Pass',
+    price: 14.99,
+    cycle: 'monthly',
+    nextChargeDate: '2026-11-28',
+    color: '#2F5E2B',
+    category: 'Gaming',
+  },
+  {
+    id: 'icloud',
+    name: 'iCloud',
+    price: 0.99,
+    cycle: 'monthly',
+    nextChargeDate: '2026-12-03',
+    color: '#2563EB',
+    category: 'Αποθήκευση',
+  },
+  {
+    id: 'claude',
+    name: 'Claude',
+    price: 20,
+    cycle: 'monthly',
+    nextChargeDate: '2026-12-05',
+    color: '#A4572F',
+    category: 'AI',
+  },
+];
