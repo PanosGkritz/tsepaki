@@ -6,9 +6,11 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { colors } from '../constants/theme';
+import { migrateDbIfNeeded } from '../db/migrate';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,14 +24,17 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <SQLiteProvider databaseName="tsepaki.db" onInit={migrateDbIfNeeded}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
         }}
-      />
-    </>
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="subscription/new" options={{ presentation: 'modal' }} />
+      </Stack>
+    </SQLiteProvider>
   );
 }

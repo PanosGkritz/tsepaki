@@ -3,6 +3,7 @@ import { colors, fonts, radius, spacing } from '../constants/theme';
 import { daysUntil, formatChargeDay, formatRelativeDays } from '../lib/dates';
 import { formatEuro } from '../lib/format';
 import type { Subscription } from '../types/subscription';
+import { ServiceLogo } from './ServiceLogo';
 
 type UpcomingChargesProps = {
   subscriptions: Subscription[];
@@ -42,9 +43,12 @@ const ChargeRow = ({ subscription, showDivider }: ChargeRowProps) => {
 
   return (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
-      <View style={[styles.avatar, { backgroundColor: subscription.color }]}>
-        <Text style={styles.avatarText}>{subscription.name.charAt(0)}</Text>
-      </View>
+      <ServiceLogo
+        id={subscription.id}
+        name={subscription.name}
+        fallbackColor={subscription.color}
+        size={42}
+      />
 
       <View style={styles.info}>
         <Text style={styles.name}>{subscription.name}</Text>
@@ -78,14 +82,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: colors.onAccent, fontSize: 17, fontFamily: fonts.semibold },
   info: { flex: 1, gap: 2 },
   name: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   when: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
