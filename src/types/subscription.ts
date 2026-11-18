@@ -8,4 +8,8 @@ export type Subscription = {
   nextChargeDate: string;
   color: string;
   category: string;
+  serviceId?: string;
+  domain?: string;
 };
+
+export type NewSubscription = Omit<Subscription, 'id'>;

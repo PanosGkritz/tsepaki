@@ -18,7 +18,9 @@ export default function Add() {
 
   useFocusEffect(
     useCallback(() => {
-      getSubscriptions(db).then((subscriptions) => setAddedIds(subscriptions.map((s) => s.id)));
+      getSubscriptions(db).then((subscriptions) =>
+        setAddedIds(subscriptions.map((s) => s.serviceId ?? s.id)),
+      );
     }, [db]),
   );
 

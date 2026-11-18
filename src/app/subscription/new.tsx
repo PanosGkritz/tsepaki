@@ -1,41 +1,320 @@
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useState } from 'react';
+import {
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+import { ServiceLogo } from '../../components/ServiceLogo';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
-import { services } from '../../data/services';
+import { SERVICE_CATEGORIES, findService } from '../../data/services';
+import { insertSubscription } from '../../db/subscriptions';
+import { pickColor } from '../../lib/colors';
+import { formatFullDate, toIsoDate } from '../../lib/dates';
+import type { BillingCycle } from '../../types/subscription';
+
+const FORM_CATEGORIES = [...SERVICE_CATEGORIES.filter((item) => item !== 'Όλα'), 'Άλλο'];
+
+const CYCLES: { value: BillingCycle; label: string }[] = [
+  { value: 'monthly', label: 'Μηνιαία' },
+  { value: 'yearly', label: 'Ετήσια' },
+];
+
+const parsePrice = (text: string) => {
+  const value = Number(text.replace(',', '.'));
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
 
 export default function NewSubscription() {
+  const db = useSQLiteContext();
   const { serviceId } = useLocalSearchParams<{ serviceId?: string }>();
-  const service = services.find((item) => item.id === serviceId);
+  const service = serviceId ? findService(serviceId) : undefined;
+
+  const [name, setName] = useState(service?.name ?? '');
+  const [priceText, setPriceText] = useState('');
+  const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [nextDate, setNextDate] = useState(new Date());
+  const [category, setCategory] = useState(service?.category ?? 'Άλλο');
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const price = parsePrice(priceText);
+  const trimmedName = name.trim();
+
+  const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    setShowAndroidPicker(false);
+    if (event.type === 'set' && date) setNextDate(date);
+  };
+
+  const handleSave = async () => {
+    if (!trimmedName) {
+      setError('Βάλε ένα όνομα για τη συνδρομή.');
+      return;
+    }
+    if (price === null) {
+      setError('Βάλε μια σωστή τιμή, π.χ. 9,99.');
+      return;
+    }
+
+    setError(null);
+    setSaving(true);
+
+    try {
+      await insertSubscription(db, {
+        name: trimmedName,
+        price,
+        cycle,
+        nextChargeDate: toIsoDate(nextDate),
+        color: service?.color ?? pickColor(trimmedName),
+        category,
+        serviceId: service?.id,
+        domain: service?.domain,
+      });
+      router.back();
+    } catch {
+      setError('Κάτι πήγε στραβά στην αποθήκευση. Δοκίμασε ξανά.');
+      setSaving(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{service ? service.name : 'Χειροκίνητη προσθήκη'}</Text>
-      <Text style={styles.subtitle}>Εδώ θα μπει η φόρμα (Βήμα 11)</Text>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.topBar}>
+          <Text style={styles.title}>{service ? 'Νέα συνδρομή' : 'Χειροκίνητη προσθήκη'}</Text>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Κλείσιμο"
+            style={styles.closeButton}
+          >
+            <Ionicons name="close" size={22} color={colors.text} />
+          </Pressable>
+        </View>
 
-      <Pressable onPress={() => router.back()} style={styles.button} accessibilityRole="button">
-        <Text style={styles.buttonText}>Κλείσιμο</Text>
-      </Pressable>
-    </View>
+        <View style={styles.hero}>
+          <ServiceLogo
+            id={service?.id ?? 'custom'}
+            name={trimmedName || '?'}
+            fallbackColor={service?.color ?? pickColor(trimmedName || '?')}
+            size={64}
+          />
+          <Text style={styles.heroName} numberOfLines={1}>
+            {trimmedName || 'Νέα συνδρομή'}
+          </Text>
+        </View>
+
+        <Field label="Όνομα">
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="π.χ. Netflix"
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+            accessibilityLabel="Όνομα συνδρομής"
+          />
+        </Field>
+
+        <Field label="Τιμή">
+          <View style={styles.priceRow}>
+            <TextInput
+              value={priceText}
+              onChangeText={setPriceText}
+              placeholder="0,00"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="decimal-pad"
+              style={[styles.input, styles.priceInput]}
+              accessibilityLabel="Τιμή σε ευρώ"
+            />
+            <Text style={styles.currency}>€</Text>
+          </View>
+        </Field>
+
+        <Field label="Συχνότητα">
+          <View style={styles.segment}>
+            {CYCLES.map((item) => {
+              const isActive = item.value === cycle;
+              return (
+                <Pressable
+                  key={item.value}
+                  onPress={() => setCycle(item.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  style={[styles.segmentItem, isActive && styles.segmentItemActive]}
+                >
+                  <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Field>
+
+        <Field label="Επόμενη χρέωση">
+          {Platform.OS === 'ios' ? (
+            <View style={styles.iosDateRow}>
+              <Text style={styles.dateText}>{formatFullDate(nextDate)}</Text>
+              <DateTimePicker
+                value={nextDate}
+                mode="date"
+                display="compact"
+                locale="el-GR"
+                themeVariant="dark"
+                accentColor={colors.accentBright}
+                onChange={onDateChange}
+              />
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setShowAndroidPicker(true)}
+              accessibilityRole="button"
+              style={styles.input}
+            >
+              <Text style={styles.dateText}>{formatFullDate(nextDate)}</Text>
+            </Pressable>
+          )}
+          {showAndroidPicker && (
+            <DateTimePicker value={nextDate} mode="date" onChange={onDateChange} />
+          )}
+        </Field>
+
+        <Field label="Κατηγορία">
+          <View style={styles.chips}>
+            {FORM_CATEGORIES.map((item) => {
+              const isActive = item === category;
+              return (
+                <Pressable
+                  key={item}
+                  onPress={() => setCategory(item)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  style={[styles.chip, isActive && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Field>
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <Pressable
+          onPress={handleSave}
+          disabled={saving}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.saveButton,
+            (pressed || saving) && styles.saveButtonPressed,
+          ]}
+        >
+          <Text style={styles.saveButtonText}>
+            {saving ? 'Αποθήκευση…' : 'Πρόσθεσε στο Τσεπάκι'}
+          </Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
+type FieldProps = { label: string; children: React.ReactNode };
+
+const Field = ({ label, children }: FieldProps) => (
+  <View style={styles.field}>
+    <Text style={styles.label}>{label}</Text>
+    {children}
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    gap: spacing.sm,
-  },
-  title: { color: colors.text, fontSize: 26, fontFamily: fonts.semibold },
-  subtitle: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular },
-  button: {
-    marginTop: spacing.lg,
-    height: 50,
-    borderRadius: radius.md,
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: spacing.xl * 2, gap: spacing.lg },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { color: colors.text, fontSize: 22, fontFamily: fonts.semibold },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonText: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
+  hero: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  heroName: { color: colors.text, fontSize: 20, fontFamily: fonts.semibold },
+  field: { gap: spacing.sm },
+  label: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.medium },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: 52,
+    justifyContent: 'center',
+    color: colors.text,
+    fontSize: 16,
+    fontFamily: fonts.regular,
+  },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  priceInput: { flex: 1, fontVariant: ['tabular-nums'] },
+  currency: { color: colors.textMuted, fontSize: 18, fontFamily: fonts.medium },
+  segment: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    padding: 4,
+  },
+  segmentItem: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentItemActive: { backgroundColor: colors.surfaceRaised },
+  segmentText: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.medium },
+  segmentTextActive: { color: colors.text },
+  iosDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    height: 52,
+  },
+  dateText: { color: colors.text, fontSize: 16, fontFamily: fonts.regular },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+  },
+  chipActive: { backgroundColor: colors.text },
+  chipText: { color: colors.text, fontSize: 14, fontFamily: fonts.medium },
+  chipTextActive: { color: colors.background },
+  error: { color: colors.warning, fontSize: 14, fontFamily: fonts.medium },
+  saveButton: {
+    height: 54,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonPressed: { opacity: 0.8 },
+  saveButtonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
 });

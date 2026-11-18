@@ -1,11 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  const currentVersion = result?.user_version ?? 0;
+  let currentVersion = result?.user_version ?? 0;
 
   if (currentVersion >= DATABASE_VERSION) return;
 
@@ -47,6 +47,18 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
         subscription.category,
       );
     }
+
+    currentVersion = 1;
+  }
+
+  if (currentVersion === 1) {
+    await db.execAsync(`
+      ALTER TABLE subscriptions ADD COLUMN service_id TEXT;
+      ALTER TABLE subscriptions ADD COLUMN domain TEXT;
+      UPDATE subscriptions SET service_id = id WHERE service_id IS NULL;
+    `);
+
+    currentVersion = 2;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
