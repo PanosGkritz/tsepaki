@@ -1,8 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { MonthSummaryCard } from '../components/MonthSummaryCard';
-import { UpcomingCharges } from '../components/UpcomingCharges';
-import { colors, fonts, spacing } from '../constants/theme';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { MonthSummaryCard } from '../../components/MonthSummaryCard';
+import { UpcomingCharges } from '../../components/UpcomingCharges';
+import { colors, fonts, spacing } from '../../constants/theme';
+import { mockSubscriptions } from '../../data/mockSubscriptions';
 
 export default function Home() {
   return (
