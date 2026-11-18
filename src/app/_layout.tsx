@@ -11,11 +11,17 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { colors } from '../constants/theme';
 import { migrateDbIfNeeded } from '../db/migrate';
+import { setupNotifications } from '../lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
+setupNotifications();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold });
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
