@@ -1,9 +1,11 @@
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing } from '../constants/theme';
 
-export default function Index() {
+export default function Home() {
   return (
     <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
+      <Text style={styles.greeting}>Καλημέρα, Πάνο</Text>
+      <Text style={styles.title}>Το Τσεπάκι μου</Text>
     </View>
   );
 }
@@ -11,7 +13,11 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 80,
+    gap: spacing.xs,
   },
+  greeting: { color: colors.textMuted, fontSize: 15 },
+  title: { color: colors.text, fontSize: 30, fontWeight: '600', letterSpacing: -0.5 },
 });
