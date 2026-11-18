@@ -107,10 +107,14 @@ export const getScheduledCount = async () => {
 };
 
 export const sendTestNotification = async () => {
+  const testPayload: ChargePayload = { subscriptionIds: [], chargeDate: '' };
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Tsepaki',
-      body: 'Έτσι θα σου θυμίζω τις χρεώσεις. Αύριο σού τραβάει 13,99 € το Netflix.',
+      body: 'Έτσι θα σου θυμίζω τις χρεώσεις. Σήμερα σού τραβάει 13,99 € το Netflix.',
+      data: testPayload,
+      categoryIdentifier: CHARGE_DAY_CATEGORY,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
