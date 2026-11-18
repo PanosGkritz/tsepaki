@@ -3,14 +3,23 @@ import { Platform } from 'react-native';
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined';
 
+export type ChargePayload = {
+  subscriptionIds: string[];
+  chargeDate: string;
+};
+
 export type Reminder = {
   id: string;
   date: Date;
   title: string;
   body: string;
+  payload?: ChargePayload;
 };
 
+export const PAID_ACTION = 'paid';
+
 const CHANNEL_ID = 'charges';
+const CHARGE_DAY_CATEGORY = 'charge-day';
 
 const toPermissionState = (status: string): PermissionState => {
   if (status === 'granted') return 'granted';
@@ -28,12 +37,31 @@ export const setupNotifications = () => {
     }),
   });
 
+  Notifications.setNotificationCategoryAsync(CHARGE_DAY_CATEGORY, [
+    {
+      identifier: PAID_ACTION,
+      buttonTitle: 'Το πλήρωσα',
+      options: { opensAppToForeground: true },
+    },
+  ]);
+
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'Υπενθυμίσεις χρεώσεων',
       importance: Notifications.AndroidImportance.HIGH,
     });
   }
+};
+
+export const readChargePayload = (data: unknown): ChargePayload | null => {
+  if (typeof data !== 'object' || data === null) return null;
+  if (!('subscriptionIds' in data) || !('chargeDate' in data)) return null;
+
+  const { subscriptionIds, chargeDate } = data;
+  if (!Array.isArray(subscriptionIds) || typeof chargeDate !== 'string') return null;
+
+  const ids = subscriptionIds.filter((id): id is string => typeof id === 'string');
+  return { subscriptionIds: ids, chargeDate };
 };
 
 export const getPermissionState = async () => {
@@ -56,7 +84,14 @@ export const replaceScheduledReminders = async (reminders: Reminder[]) => {
   for (const reminder of reminders) {
     await Notifications.scheduleNotificationAsync({
       identifier: reminder.id,
-      content: { title: reminder.title, body: reminder.body },
+      content: {
+        title: reminder.title,
+        body: reminder.body,
+        ...(reminder.payload && {
+          data: reminder.payload,
+          categoryIdentifier: CHARGE_DAY_CATEGORY,
+        }),
+      },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: reminder.date,
