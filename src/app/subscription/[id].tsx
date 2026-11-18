@@ -5,22 +5,39 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
 import { findService } from '../../data/services';
+import { getSubscriptionTotals } from '../../db/charges';
 import {
-    cancelSubscription,
-    deleteSubscription,
-    getSubscription,
-    updateSubscription,
+  cancelSubscription,
+  deleteSubscription,
+  getSubscription,
+  updateSubscription,
 } from '../../db/subscriptions';
+import { parseIsoDate } from '../../lib/dates';
+import { formatEuro } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
+import { getMonthName, toAccusative } from '../../lib/stats';
 import type { NewSubscription, Subscription } from '../../types/subscription';
+
+type Totals = Awaited<ReturnType<typeof getSubscriptionTotals>>;
+
+const describeTotals = (totals: Totals) => {
+  if (totals.count === 0 || !totals.firstDate) return 'Δεν έχει χρεωθεί ακόμα μέσα από το Τσεπάκι.';
+
+  const firstDate = parseIsoDate(totals.firstDate);
+  const since = `${toAccusative(getMonthName(firstDate))} ${firstDate.getFullYear()}`;
+  const times = totals.count === 1 ? '1 χρέωση' : `${totals.count} χρεώσεις`;
+  return `σε ${times} από τον ${since}`;
+};
 
 export default function EditSubscription() {
   const db = useSQLiteContext();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [totals, setTotals] = useState<Totals | null>(null);
 
   useEffect(() => {
     getSubscription(db, id).then(setSubscription);
+    getSubscriptionTotals(db, id).then(setTotals);
   }, [db, id]);
 
   if (!subscription) return <View style={styles.screen} />;
@@ -78,22 +95,32 @@ export default function EditSubscription() {
       initial={subscription}
       onSubmit={handleSubmit}
       footer={
-        <View style={styles.actions}>
-          <Pressable
-            onPress={confirmCancel}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.actionText}>Την ακύρωσα</Text>
-          </Pressable>
+        <View style={styles.footer}>
+          {totals && (
+            <View style={styles.totalsCard}>
+              <Text style={styles.totalsLabel}>Έχεις δώσει συνολικά</Text>
+              <Text style={styles.totalsAmount}>{formatEuro(totals.total)}</Text>
+              <Text style={styles.totalsCaption}>{describeTotals(totals)}</Text>
+            </View>
+          )}
 
-          <Pressable
-            onPress={confirmDelete}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.deleteText}>Διαγραφή</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable
+              onPress={confirmCancel}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.actionText}>Την ακύρωσα</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={confirmDelete}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.deleteText}>Διαγραφή</Text>
+            </Pressable>
+          </View>
         </View>
       }
     />
@@ -102,6 +129,23 @@ export default function EditSubscription() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  footer: { gap: spacing.md },
+  totalsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 18,
+    gap: 2,
+  },
+  totalsLabel: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.medium },
+  totalsAmount: {
+    color: colors.text,
+    fontSize: 26,
+    fontFamily: fonts.semibold,
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  totalsCaption: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   actions: { flexDirection: 'row', gap: spacing.sm },
   actionButton: {
     flex: 1,

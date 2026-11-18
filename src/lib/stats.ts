@@ -17,7 +17,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Μουσική: '#30A46C',
   Gaming: '#3E63DD',
   AI: '#D97757',
-  Αποθήκευση: '#0091FF',
+  Αποθήκευση: '#12A594',
   Κινητό: '#D6409F',
   TV: '#F5A35C',
   Άλλο: '#8B8D98',

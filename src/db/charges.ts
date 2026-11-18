@@ -88,6 +88,24 @@ export const getPaidBetween = async (db: SQLiteDatabase, fromIso: string, toIso:
   return (row?.total ?? 0) / 100;
 };
 
+export const getSubscriptionTotals = async (db: SQLiteDatabase, subscriptionId: string) => {
+  const row = await db.getFirstAsync<{
+    total: number | null;
+    count: number;
+    first_date: string | null;
+  }>(
+    `SELECT SUM(amount_cents) AS total, COUNT(*) AS count, MIN(charge_date) AS first_date
+     FROM charges WHERE subscription_id = ?`,
+    subscriptionId,
+  );
+
+  return {
+    total: (row?.total ?? 0) / 100,
+    count: row?.count ?? 0,
+    firstDate: row?.first_date ?? null,
+  };
+};
+
 export const getChargedItems = async (db: SQLiteDatabase, fromIso: string, toIso: string) => {
   const rows = await db.getAllAsync<ChargeJoinRow>(
     `SELECT c.id AS charge_id, c.charge_date, c.amount_cents,
