@@ -1,14 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radius, spacing } from '../constants/theme';
 import { daysUntil, formatChargeDay, formatRelativeDays } from '../lib/dates';
-import { formatEuro } from '../lib/format';
 import type { Subscription } from '../types/subscription';
-import { ServiceLogo } from './ServiceLogo';
+import { SubscriptionRow } from './SubscriptionRow';
 
 type UpcomingChargesProps = {
   subscriptions: Subscription[];
   limit?: number;
 };
+
+const openSubscription = (id: string) =>
+  router.push({ pathname: '/subscription/[id]', params: { id } });
 
 export const UpcomingCharges = ({ subscriptions, limit = 4 }: UpcomingChargesProps) => {
   const upcoming = [...subscriptions]
@@ -17,80 +20,57 @@ export const UpcomingCharges = ({ subscriptions, limit = 4 }: UpcomingChargesPro
 
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>Επόμενες χρεώσεις</Text>
-
-      <View style={styles.list}>
-        {upcoming.map((subscription, index) => (
-          <ChargeRow
-            key={subscription.id}
-            subscription={subscription}
-            showDivider={index < upcoming.length - 1}
-          />
-        ))}
-      </View>
-    </View>
-  );
-};
-
-type ChargeRowProps = {
-  subscription: Subscription;
-  showDivider: boolean;
-};
-
-const ChargeRow = ({ subscription, showDivider }: ChargeRowProps) => {
-  const days = daysUntil(subscription.nextChargeDate);
-  const isSoon = days <= 2;
-
-  return (
-    <View style={[styles.row, showDivider && styles.rowDivider]}>
-      <ServiceLogo
-        id={subscription.serviceId ?? subscription.id}
-        name={subscription.name}
-        fallbackColor={subscription.color}
-        domain={subscription.serviceId ? undefined : subscription.domain}
-        size={42}
-      />
-
-      <View style={styles.info}>
-        <Text style={styles.name}>{subscription.name}</Text>
-        <Text style={styles.when}>
-          {formatChargeDay(subscription.nextChargeDate)}
-          {' · '}
-          <Text style={isSoon ? styles.soon : undefined}>{formatRelativeDays(days)}</Text>
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Επόμενες χρεώσεις</Text>
+        <Pressable
+          onPress={() => router.push('/subscriptions')}
+          accessibilityRole="link"
+          hitSlop={12}
+        >
+          <Text style={styles.link}>Όλες</Text>
+        </Pressable>
       </View>
 
-      <Text style={styles.price}>{formatEuro(subscription.price)}</Text>
+      {upcoming.length === 0 ? (
+        <Text style={styles.empty}>Δεν έχεις ακόμα συνδρομές. Πάτα το + για να προσθέσεις.</Text>
+      ) : (
+        <View style={styles.list}>
+          {upcoming.map((subscription, index) => {
+            const days = daysUntil(subscription.nextChargeDate);
+            return (
+              <SubscriptionRow
+                key={subscription.id}
+                subscription={subscription}
+                showDivider={index < upcoming.length - 1}
+                onPress={() => openSubscription(subscription.id)}
+                subtitle={
+                  <>
+                    {formatChargeDay(subscription.nextChargeDate)}
+                    {' · '}
+                    <Text style={days <= 2 ? styles.soon : undefined}>
+                      {formatRelativeDays(days)}
+                    </Text>
+                  </>
+                }
+              />
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   section: { gap: spacing.sm },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   title: { color: colors.text, fontSize: 18, fontFamily: fonts.semibold },
+  link: { color: colors.accentBright, fontSize: 15, fontFamily: fonts.medium },
   list: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-  },
-  rowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  info: { flex: 1, gap: 2 },
-  name: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
-  when: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   soon: { color: colors.warning, fontFamily: fonts.medium },
-  price: {
-    color: colors.text,
-    fontSize: 15,
-    fontFamily: fonts.semibold,
-    fontVariant: ['tabular-nums'],
-  },
+  empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
 });

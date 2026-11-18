@@ -31,9 +31,14 @@ const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).
 
 export const getSubscriptions = async (db: SQLiteDatabase) => {
   const rows = await db.getAllAsync<SubscriptionRow>(
-    'SELECT * FROM subscriptions ORDER BY next_charge_date ASC',
+    'SELECT * FROM subscriptions WHERE cancelled_at IS NULL ORDER BY next_charge_date ASC',
   );
   return rows.map(toSubscription);
+};
+
+export const getSubscription = async (db: SQLiteDatabase, id: string) => {
+  const row = await db.getFirstAsync<SubscriptionRow>('SELECT * FROM subscriptions WHERE id = ?', id);
+  return row ? toSubscription(row) : null;
 };
 
 export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSubscription) => {
@@ -55,4 +60,38 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
   );
 
   return id;
+};
+
+export const updateSubscription = async (
+  db: SQLiteDatabase,
+  id: string,
+  subscription: NewSubscription,
+) => {
+  await db.runAsync(
+    `UPDATE subscriptions
+     SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
+         category = ?, service_id = ?, domain = ?
+     WHERE id = ?`,
+    subscription.name,
+    Math.round(subscription.price * 100),
+    subscription.cycle,
+    subscription.nextChargeDate,
+    subscription.color,
+    subscription.category,
+    subscription.serviceId ?? null,
+    subscription.domain ?? null,
+    id,
+  );
+};
+
+export const cancelSubscription = async (db: SQLiteDatabase, id: string) => {
+  await db.runAsync(
+    "UPDATE subscriptions SET cancelled_at = datetime('now') WHERE id = ?",
+    id,
+  );
+};
+
+export const deleteSubscription = async (db: SQLiteDatabase, id: string) => {
+  await db.runAsync('DELETE FROM charges WHERE subscription_id = ?', id);
+  await db.runAsync('DELETE FROM subscriptions WHERE id = ?', id);
 };
