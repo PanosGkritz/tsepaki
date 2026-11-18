@@ -19,6 +19,8 @@ import { SERVICE_CATEGORIES, findService } from '../../data/services';
 import { insertSubscription } from '../../db/subscriptions';
 import { pickColor } from '../../lib/colors';
 import { formatFullDate, toIsoDate } from '../../lib/dates';
+import { requestPermission } from '../../lib/notifications';
+import { syncReminders } from '../../lib/reminders';
 import type { BillingCycle } from '../../types/subscription';
 
 const FORM_CATEGORIES = [...SERVICE_CATEGORIES.filter((item) => item !== 'Όλα'), 'Άλλο'];
@@ -31,6 +33,14 @@ const CYCLES: { value: BillingCycle; label: string }[] = [
 const parsePrice = (text: string) => {
   const value = Number(text.replace(',', '.'));
   return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const enableReminders = async () => {
+  try {
+    await requestPermission();
+  } catch {
+    // Αν δεν δοθεί άδεια, η συνδρομή αποθηκεύεται κανονικά.
+  }
 };
 
 export default function NewSubscription() {
@@ -79,11 +89,15 @@ export default function NewSubscription() {
         serviceId: service?.id,
         domain: service?.domain,
       });
-      router.back();
     } catch {
       setError('Κάτι πήγε στραβά στην αποθήκευση. Δοκίμασε ξανά.');
       setSaving(false);
+      return;
     }
+
+    await enableReminders();
+    await syncReminders(db);
+    router.back();
   };
 
   return (

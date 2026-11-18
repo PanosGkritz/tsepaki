@@ -9,6 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { ReminderSync } from '../components/ReminderSync';
 import { colors } from '../constants/theme';
 import { migrateDbIfNeeded } from '../db/migrate';
 import { setupNotifications } from '../lib/notifications';
@@ -31,6 +32,7 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName="tsepaki.db" onInit={migrateDbIfNeeded}>
+      <ReminderSync />
       <StatusBar style="light" />
       <Stack
         screenOptions={{

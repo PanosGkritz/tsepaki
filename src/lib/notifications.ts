@@ -3,6 +3,15 @@ import { Platform } from 'react-native';
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined';
 
+export type Reminder = {
+  id: string;
+  date: Date;
+  title: string;
+  body: string;
+};
+
+const CHANNEL_ID = 'charges';
+
 const toPermissionState = (status: string): PermissionState => {
   if (status === 'granted') return 'granted';
   if (status === 'denied') return 'denied';
@@ -20,7 +29,7 @@ export const setupNotifications = () => {
   });
 
   if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('charges', {
+    Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'Υπενθυμίσεις χρεώσεων',
       importance: Notifications.AndroidImportance.HIGH,
     });
@@ -41,16 +50,37 @@ export const requestPermission = async () => {
   return toPermissionState(status);
 };
 
+export const replaceScheduledReminders = async (reminders: Reminder[]) => {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  for (const reminder of reminders) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: reminder.id,
+      content: { title: reminder.title, body: reminder.body },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: reminder.date,
+        channelId: CHANNEL_ID,
+      },
+    });
+  }
+};
+
+export const getScheduledCount = async () => {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  return scheduled.length;
+};
+
 export const sendTestNotification = async () => {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Τσεπάκι',
-      body: 'Έτσι θα σου θυμίζω τις χρεώσεις. Σε 2 μέρες σού τραβάει 13,99 € το Netflix.',
+      title: 'Tsepaki',
+      body: 'Έτσι θα σου θυμίζω τις χρεώσεις. Αύριο σού τραβάει 13,99 € το Netflix.',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 5,
-      channelId: 'charges',
+      channelId: CHANNEL_ID,
     },
   });
 };

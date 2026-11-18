@@ -1,13 +1,19 @@
 import { useFocusEffect } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
+import { getSubscriptions } from '../../db/subscriptions';
+import { formatChargeDay, toIsoDate } from '../../lib/dates';
 import {
     getPermissionState,
+    getScheduledCount,
     requestPermission,
     sendTestNotification,
     type PermissionState,
+    type Reminder,
 } from '../../lib/notifications';
+import { REMINDER_SUMMARY, buildReminders, syncReminders } from '../../lib/reminders';
 
 const STATUS_LABEL: Record<PermissionState, string> = {
   granted: 'Ενεργές',
@@ -15,14 +21,29 @@ const STATUS_LABEL: Record<PermissionState, string> = {
   undetermined: 'Δεν έχουν ρυθμιστεί',
 };
 
+const pad = (value: number) => String(value).padStart(2, '0');
+
+const formatReminder = (reminder: Reminder) =>
+  `${reminder.title} · ${formatChargeDay(toIsoDate(reminder.date))}, ${pad(reminder.date.getHours())}:${pad(reminder.date.getMinutes())}`;
+
 export default function Settings() {
+  const db = useSQLiteContext();
   const [permission, setPermission] = useState<PermissionState>('undetermined');
+  const [scheduledCount, setScheduledCount] = useState(0);
+  const [nextReminder, setNextReminder] = useState<Reminder | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setPermission(await getPermissionState());
+    setScheduledCount(await getScheduledCount());
+    const subscriptions = await getSubscriptions(db);
+    setNextReminder(buildReminders(subscriptions)[0] ?? null);
+  }, [db]);
 
   useFocusEffect(
     useCallback(() => {
-      getPermissionState().then(setPermission);
-    }, []),
+      refresh();
+    }, [refresh]),
   );
 
   const handleTest = async () => {
@@ -34,7 +55,9 @@ export default function Settings() {
       return;
     }
 
+    await syncReminders(db);
     await sendTestNotification();
+    await refresh();
     setMessage('Έρχεται σε 5 δευτερόλεπτα.');
   };
 
@@ -52,6 +75,21 @@ export default function Settings() {
               {STATUS_LABEL[permission]}
             </Text>
           </View>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Προγραμματισμένες</Text>
+            <Text style={styles.rowValue}>{scheduledCount}</Text>
+          </View>
+
+          {nextReminder && (
+            <View style={styles.next}>
+              <Text style={styles.rowLabel}>Επόμενη υπενθύμιση</Text>
+              <Text style={styles.rowValue}>{formatReminder(nextReminder)}</Text>
+              <Text style={styles.preview}>«{nextReminder.body}»</Text>
+            </View>
+          )}
+
+          <Text style={styles.hint}>{REMINDER_SUMMARY}</Text>
 
           <Pressable
             onPress={handleTest}
@@ -87,9 +125,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  next: { gap: 2 },
   rowLabel: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   rowValue: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular },
   rowValueOn: { color: colors.accentBright },
+  preview: { color: colors.text, fontSize: 14, fontFamily: fonts.regular, marginTop: 4 },
+  hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 19 },
   button: {
     height: 50,
     borderRadius: radius.md,
