@@ -1,17 +1,27 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { processDueCharges } from '../db/charges';
+import { getSettings, type AppSettings } from '../db/settings';
 import { getSubscriptions } from '../db/subscriptions';
 import type { Subscription } from '../types/subscription';
 import { parseIsoDate } from './dates';
 import { formatEuro } from './format';
 import { getPermissionState, replaceScheduledReminders, type Reminder } from './notifications';
 
-export const REMINDER_DAYS = [3, 2, 1, 0];
+type ReminderSettings = Pick<AppSettings, 'reminderDays' | 'reminderHour' | 'yearlyReminder'>;
+
 export const YEARLY_EXTRA_DAYS = 7;
-export const REMINDER_HOUR = 10;
-export const REMINDER_SUMMARY =
-  'Σου θυμίζω 3 και 2 μέρες πριν, την προηγούμενη μέρα και το πρωί της χρέωσης, στις 10:00. Για τις ετήσιες συνδρομές και μία εβδομάδα πριν.';
 const MAX_REMINDERS = 60;
+
+export const REMINDER_DAY_OPTIONS = [
+  { value: 3, label: '3 μέρες πριν' },
+  { value: 2, label: '2 μέρες πριν' },
+  { value: 1, label: 'Την προηγούμενη' },
+  { value: 0, label: 'Την ημέρα' },
+];
+
+export const REMINDER_HOUR_OPTIONS = [8, 9, 10, 12, 18, 20];
+
+export const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const WEEKDAY_ON = [
   'την Κυριακή',
@@ -67,10 +77,10 @@ const joinNames = (subscriptions: Subscription[]) => {
   return `${names.slice(0, -1).join(', ')} και ${names[names.length - 1]}`;
 };
 
-const buildReminderDate = (chargeDate: string, daysBefore: number) => {
+const buildReminderDate = (chargeDate: string, daysBefore: number, hour: number) => {
   const date = parseIsoDate(chargeDate);
   date.setDate(date.getDate() - daysBefore);
-  date.setHours(REMINDER_HOUR, 0, 0, 0);
+  date.setHours(hour, 0, 0, 0);
   return date;
 };
 
@@ -99,18 +109,29 @@ const buildGroupReminder = (
   chargeDate: string,
   group: Subscription[],
   daysBefore: number,
+  hour: number,
 ): Reminder => {
   const id = `${chargeDate}-${daysBefore}`;
-  const date = buildReminderDate(chargeDate, daysBefore);
+  const date = buildReminderDate(chargeDate, daysBefore, hour);
   const day = capitalize(WEEKDAY_ON[parseIsoDate(chargeDate).getDay()]);
+  const payload =
+    daysBefore === 0
+      ? { subscriptionIds: group.map((subscription) => subscription.id), chargeDate }
+      : undefined;
   const single = group.length === 1 ? group[0] : undefined;
 
   if (single) {
-    return { id, date, title: single.name, body: buildSingleBody(single, daysBefore, day, id) };
+    return {
+      id,
+      date,
+      title: single.name,
+      body: buildSingleBody(single, daysBefore, day, id),
+      payload,
+    };
   }
 
   const total = group.reduce((sum, subscription) => sum + subscription.price, 0);
-  return { id, date, title: joinNames(group), body: buildGroupBody(total, daysBefore, day) };
+  return { id, date, title: joinNames(group), body: buildGroupBody(total, daysBefore, day), payload };
 };
 
 const groupByChargeDate = (subscriptions: Subscription[]) => {
@@ -122,22 +143,32 @@ const groupByChargeDate = (subscriptions: Subscription[]) => {
   return groups;
 };
 
-const buildYearlyReminders = (subscriptions: Subscription[]): Reminder[] =>
+const buildYearlyReminders = (subscriptions: Subscription[], hour: number): Reminder[] =>
   subscriptions
     .filter((subscription) => subscription.cycle === 'yearly')
     .map((subscription) => ({
       id: `${subscription.id}-${YEARLY_EXTRA_DAYS}`,
-      date: buildReminderDate(subscription.nextChargeDate, YEARLY_EXTRA_DAYS),
+      date: buildReminderDate(subscription.nextChargeDate, YEARLY_EXTRA_DAYS, hour),
       title: subscription.name,
       body: fill(YEARLY_TEMPLATE, formatEuro(subscription.price)),
     }));
 
-export const buildReminders = (subscriptions: Subscription[], now = new Date()): Reminder[] => {
+export const buildReminders = (
+  subscriptions: Subscription[],
+  settings: ReminderSettings,
+  now = new Date(),
+): Reminder[] => {
   const grouped = [...groupByChargeDate(subscriptions).entries()].flatMap(([chargeDate, group]) =>
-    REMINDER_DAYS.map((daysBefore) => buildGroupReminder(chargeDate, group, daysBefore)),
+    settings.reminderDays.map((daysBefore) =>
+      buildGroupReminder(chargeDate, group, daysBefore, settings.reminderHour),
+    ),
   );
 
-  return [...grouped, ...buildYearlyReminders(subscriptions)]
+  const yearly = settings.yearlyReminder
+    ? buildYearlyReminders(subscriptions, settings.reminderHour)
+    : [];
+
+  return [...grouped, ...yearly]
     .filter((reminder) => reminder.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, MAX_REMINDERS);
@@ -152,8 +183,8 @@ const runSync = async (db: SQLiteDatabase) => {
 
   try {
     if ((await getPermissionState()) !== 'granted') return;
-    const subscriptions = await getSubscriptions(db);
-    await replaceScheduledReminders(buildReminders(subscriptions));
+    const [subscriptions, settings] = await Promise.all([getSubscriptions(db), getSettings(db)]);
+    await replaceScheduledReminders(buildReminders(subscriptions, settings));
   } catch {
     // Αν αποτύχουν οι ειδοποιήσεις, η υπόλοιπη εφαρμογή συνεχίζει κανονικά.
   }
