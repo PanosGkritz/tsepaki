@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { processDueCharges } from '../db/charges';
 import { getSubscriptions } from '../db/subscriptions';
 import type { Subscription } from '../types/subscription';
 import { parseIsoDate } from './dates';
@@ -143,6 +144,12 @@ export const buildReminders = (subscriptions: Subscription[], now = new Date()):
 };
 
 const runSync = async (db: SQLiteDatabase) => {
+  try {
+    await processDueCharges(db);
+  } catch {
+    // Αν αποτύχει η καταγραφή, συνεχίζουμε με τις ειδοποιήσεις.
+  }
+
   try {
     if ((await getPermissionState()) !== 'granted') return;
     const subscriptions = await getSubscriptions(db);

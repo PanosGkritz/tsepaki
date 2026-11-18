@@ -1,5 +1,5 @@
 import type { Subscription } from '../types/subscription';
-import { parseIsoDate } from './dates';
+import { toIsoDate } from './dates';
 
 const MONTHS = [
   'Ιανουάριος',
@@ -16,24 +16,25 @@ const MONTHS = [
   'Δεκέμβριος',
 ];
 
-export const getMonthLabel = (today = new Date()) => MONTHS[today.getMonth()];
+export const getMonthLabel = (date = new Date()) =>
+  `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 
-const isSameMonth = (date: Date, today: Date) =>
-  date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth();
+export const getMonthRange = (date = new Date()) => ({
+  from: toIsoDate(new Date(date.getFullYear(), date.getMonth(), 1)),
+  to: toIsoDate(new Date(date.getFullYear(), date.getMonth() + 1, 0)),
+});
 
-export const getMonthSummary = (subscriptions: Subscription[], today = new Date()) => {
-  let total = 0;
-  let remaining = 0;
+export const getMonthSummary = (subscriptions: Subscription[], paid: number, date = new Date()) => {
+  const { from, to } = getMonthRange(date);
 
-  for (const subscription of subscriptions) {
-    const nextCharge = parseIsoDate(subscription.nextChargeDate);
-    const chargesThisMonth = subscription.cycle === 'monthly' || isSameMonth(nextCharge, today);
+  const remaining = subscriptions
+    .filter((subscription) => subscription.nextChargeDate >= from && subscription.nextChargeDate <= to)
+    .reduce((sum, subscription) => sum + subscription.price, 0);
 
-    if (!chargesThisMonth) continue;
-
-    total += subscription.price;
-    if (isSameMonth(nextCharge, today)) remaining += subscription.price;
-  }
-
-  return { total, paid: total - remaining, count: subscriptions.length };
+  return {
+    total: paid + remaining,
+    paid,
+    remaining,
+    count: subscriptions.length,
+  };
 };

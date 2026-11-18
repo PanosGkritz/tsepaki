@@ -1,3 +1,5 @@
+import type { BillingCycle } from '../types/subscription';
+
 const WEEKDAYS = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +19,15 @@ const startOfDay = (date: Date) =>
 
 export const daysUntil = (iso: string, today = new Date()) =>
   Math.round((parseIsoDate(iso).getTime() - startOfDay(today).getTime()) / DAY_MS);
+
+export const addCycle = (iso: string, cycle: BillingCycle) => {
+  const date = parseIsoDate(iso);
+  const months = cycle === 'yearly' ? 12 : 1;
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDayOfMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), lastDayOfMonth));
+  return toIsoDate(target);
+};
 
 export const formatChargeDay = (iso: string) => {
   const date = parseIsoDate(iso);

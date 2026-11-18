@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -70,6 +70,15 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     `);
 
     currentVersion = 3;
+  }
+
+  if (currentVersion === 3) {
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS charges_subscription_date
+      ON charges (subscription_id, charge_date);
+    `);
+
+    currentVersion = 4;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

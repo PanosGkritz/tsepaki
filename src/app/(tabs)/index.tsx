@@ -5,21 +5,43 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MonthSummaryCard } from '../../components/MonthSummaryCard';
 import { UpcomingCharges } from '../../components/UpcomingCharges';
 import { colors, fonts, spacing } from '../../constants/theme';
+import { getPaidBetween } from '../../db/charges';
 import { getSubscriptions } from '../../db/subscriptions';
-import { getMonthLabel, getMonthSummary } from '../../lib/summary';
+import { syncReminders } from '../../lib/reminders';
+import { getMonthLabel, getMonthRange, getMonthSummary } from '../../lib/summary';
 import type { Subscription } from '../../types/subscription';
 
 export default function Home() {
   const db = useSQLiteContext();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [paid, setPaid] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      getSubscriptions(db).then(setSubscriptions);
+      let isActive = true;
+
+      const load = async () => {
+        await syncReminders(db);
+        const { from, to } = getMonthRange();
+        const [loadedSubscriptions, paidThisMonth] = await Promise.all([
+          getSubscriptions(db),
+          getPaidBetween(db, from, to),
+        ]);
+
+        if (!isActive) return;
+        setSubscriptions(loadedSubscriptions);
+        setPaid(paidThisMonth);
+      };
+
+      load();
+
+      return () => {
+        isActive = false;
+      };
     }, [db]),
   );
 
-  const summary = getMonthSummary(subscriptions);
+  const summary = getMonthSummary(subscriptions, paid);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
