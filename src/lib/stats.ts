@@ -1,10 +1,10 @@
 import type { Subscription } from '../types/subscription';
 import {
-    getMonthEnd,
-    getMonthStart,
-    getUpcomingItems,
-    shiftMonth,
-    type CalendarItem,
+  getMonthEnd,
+  getMonthStart,
+  getUpcomingItems,
+  shiftMonth,
+  type CalendarItem,
 } from './calendar';
 import { monthlyCost } from './costs';
 import { toIsoDate } from './dates';
@@ -20,6 +20,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Αποθήκευση: '#12A594',
   Κινητό: '#D6409F',
   TV: '#F5A35C',
+  Δραστηριότητες: '#E8590C',
   Άλλο: '#8B8D98',
 };
 

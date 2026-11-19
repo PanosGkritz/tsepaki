@@ -1,9 +1,14 @@
+import type { Ionicons } from '@expo/vector-icons';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
 export type ServiceTemplate = {
   id: string;
   name: string;
-  domain: string;
   color: string;
   category: string;
+  domain?: string;
+  icon?: IconName;
 };
 
 export const SERVICE_CATEGORIES = [
@@ -15,6 +20,7 @@ export const SERVICE_CATEGORIES = [
   'Αποθήκευση',
   'Κινητό',
   'TV',
+  'Δραστηριότητες',
 ] as const;
 
 export const services: ServiceTemplate[] = [
@@ -34,6 +40,9 @@ export const services: ServiceTemplate[] = [
   { id: 'vodafone', name: 'Vodafone', domain: 'vodafone.gr', color: '#E60000', category: 'Κινητό' },
   { id: 'magentatv', name: 'MagentaTV', domain: 'telekom.com', color: '#E20074', category: 'TV' },
   { id: 'nova', name: 'Nova', domain: 'nova.gr', color: '#0055A5', category: 'TV' },
+  { id: 'gym', name: 'Γυμναστήριο', icon: 'barbell-outline', color: '#E8590C', category: 'Δραστηριότητες' },
+  { id: 'tennis', name: 'Μαθήματα τένις', icon: 'tennisball-outline', color: '#5C940D', category: 'Δραστηριότητες' },
+  { id: 'piano', name: 'Μαθήματα πιάνου', icon: 'musical-notes-outline', color: '#7048E8', category: 'Δραστηριότητες' },
 ];
 
 export const findService = (id: string) => services.find((service) => service.id === id);

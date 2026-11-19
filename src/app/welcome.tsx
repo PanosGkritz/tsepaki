@@ -2,14 +2,15 @@ import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
+import { AppLogo } from '../components/AppLogo';
 import { colors, fonts, radius, spacing } from '../constants/theme';
 import { saveSetting } from '../db/settings';
 import { requestPermission } from '../lib/notifications';
@@ -28,9 +29,14 @@ export default function Welcome() {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const finish = async (userName: string) => {
+  const trimmedName = name.trim();
+  const canContinue = trimmedName.length > 0 && !saving;
+
+  const finish = async () => {
+    if (!canContinue) return;
+
     setSaving(true);
-    await saveSetting(db, 'userName', userName);
+    await saveSetting(db, 'userName', trimmedName);
     await saveSetting(db, 'onboardingDone', true);
     await askForNotifications();
     await syncReminders(db);
@@ -44,6 +50,7 @@ export default function Welcome() {
     >
       <View style={styles.content}>
         <View style={styles.intro}>
+          <AppLogo size={72} />
           <Text style={styles.title}>Καλώς ήρθες στο Τσεπάκι</Text>
           <Text style={styles.subtitle}>
             Σου θυμίζω κάθε χρέωση πριν φύγουν τα λεφτά, για να μη μείνεις ποτέ ταπί.
@@ -60,7 +67,7 @@ export default function Welcome() {
             style={styles.input}
             autoFocus
             returnKeyType="done"
-            onSubmitEditing={() => finish(name.trim())}
+            onSubmitEditing={finish}
             accessibilityLabel="Το όνομά σου"
           />
           <Text style={styles.hint}>
@@ -71,21 +78,17 @@ export default function Welcome() {
 
       <View style={styles.footer}>
         <Pressable
-          onPress={() => finish(name.trim())}
-          disabled={saving}
+          onPress={finish}
+          disabled={!canContinue}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.button, (pressed || saving) && styles.pressed]}
+          accessibilityState={{ disabled: !canContinue }}
+          style={({ pressed }) => [
+            styles.button,
+            !canContinue && styles.buttonDisabled,
+            pressed && styles.pressed,
+          ]}
         >
           <Text style={styles.buttonText}>Ξεκίνα</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => finish('')}
-          disabled={saving}
-          accessibilityRole="button"
-          hitSlop={12}
-        >
-          <Text style={styles.skip}>Αργότερα</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -97,10 +100,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: 120,
+    paddingTop: 100,
     gap: spacing.xl,
   },
-  intro: { gap: spacing.sm },
+  intro: { gap: spacing.md },
   title: { color: colors.text, fontSize: 32, fontFamily: fonts.semibold, letterSpacing: -0.5 },
   subtitle: { color: colors.textMuted, fontSize: 16, fontFamily: fonts.regular, lineHeight: 23 },
   field: { gap: spacing.sm },
@@ -115,21 +118,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
   },
   hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
-  footer: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 48,
-    gap: spacing.md,
-    alignItems: 'center',
-  },
+  footer: { paddingHorizontal: spacing.lg, paddingBottom: 48 },
   button: {
-    alignSelf: 'stretch',
     height: 54,
     borderRadius: radius.md,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonDisabled: { opacity: 0.4 },
   pressed: { opacity: 0.8 },
   buttonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
-  skip: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.medium },
 });

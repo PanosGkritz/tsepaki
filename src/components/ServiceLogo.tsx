@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -15,52 +16,68 @@ type ServiceLogoProps = {
   size?: number;
 };
 
+const toHex = (value: string) => (value.startsWith('#') ? value : `#${value}`);
+
 export const ServiceLogo = ({ id, name, fallbackColor, domain, size = 42 }: ServiceLogoProps) => {
   const [remoteFailed, setRemoteFailed] = useState(false);
+  const service = findService(id);
+  const boxStyle = { width: size, height: size, borderRadius: size * 0.32 };
 
-  const box = { width: size, height: size, borderRadius: size * 0.32 };
-  const logoDomain = domain ?? findService(id)?.domain;
-  const remoteUrl = logoDomain ? getLogoUrl(logoDomain, size * 3) : undefined;
-
-  if (remoteUrl && !remoteFailed) {
+  if (service?.icon) {
     return (
-      <View style={[styles.box, box, styles.imageBox]}>
-        <Image
-          source={{ uri: remoteUrl }}
-          style={{ width: size, height: size }}
-          contentFit="cover"
-          cachePolicy="disk"
-          transition={150}
-          accessibilityLabel={name}
-          onError={() => setRemoteFailed(true)}
-        />
+      <View
+        style={[styles.box, boxStyle, { backgroundColor: service.color }]}
+        accessibilityLabel={name}
+      >
+        <Ionicons name={service.icon} size={size * 0.52} color="#FFFFFF" />
       </View>
     );
   }
 
-  const icon = brandIcons[id];
+  const logoDomain = domain ?? service?.domain;
+  const logoUrl = logoDomain ? getLogoUrl(logoDomain, size * 3) : undefined;
 
-  if (icon) {
-    const glyphSize = size * 0.52;
+  if (logoUrl && !remoteFailed) {
     return (
-      <View style={[styles.box, box, styles.glyphBox]} accessibilityLabel={name}>
-        <Svg width={glyphSize} height={glyphSize} viewBox="0 0 24 24">
-          <Path d={icon.path} fill={icon.hex} />
+      <Image
+        source={{ uri: logoUrl }}
+        style={boxStyle}
+        cachePolicy="disk"
+        contentFit="cover"
+        onError={() => setRemoteFailed(true)}
+        accessibilityLabel={name}
+      />
+    );
+  }
+
+  const brandIcon = brandIcons[id];
+
+  if (brandIcon) {
+    return (
+      <View
+        style={[styles.box, boxStyle, { backgroundColor: colors.surfaceRaised }]}
+        accessibilityLabel={name}
+      >
+        <Svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24">
+          <Path d={brandIcon.path} fill={toHex(brandIcon.hex)} />
         </Svg>
       </View>
     );
   }
 
   return (
-    <View style={[styles.box, box, { backgroundColor: fallbackColor }]}>
-      <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{name.charAt(0)}</Text>
+    <View
+      style={[styles.box, boxStyle, { backgroundColor: fallbackColor }]}
+      accessibilityLabel={name}
+    >
+      <Text style={[styles.initial, { fontSize: size * 0.42 }]}>
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  box: { alignItems: 'center', justifyContent: 'center' },
-  imageBox: { overflow: 'hidden', backgroundColor: colors.surfaceRaised },
-  glyphBox: { backgroundColor: colors.surfaceRaised },
-  initial: { color: colors.onAccent, fontFamily: fonts.semibold },
+  box: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  initial: { color: '#FFFFFF', fontFamily: fonts.semibold },
 });

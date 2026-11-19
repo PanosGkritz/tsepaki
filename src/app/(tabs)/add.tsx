@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ServiceCard } from '../../components/ServiceCard';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
-import { SERVICE_CATEGORIES, services } from '../../data/services';
+import { SERVICE_CATEGORIES, services, type ServiceTemplate } from '../../data/services';
 import { getSubscriptions } from '../../db/subscriptions';
 
 type Category = (typeof SERVICE_CATEGORIES)[number];
@@ -31,8 +31,24 @@ export default function Add() {
     return matchesCategory && matchesQuery;
   });
 
+  const onlineServices = visibleServices.filter((service) => !service.icon);
+  const localServices = visibleServices.filter((service) => service.icon);
+
   const openForm = (serviceId?: string) =>
     router.push({ pathname: '/subscription/new', params: serviceId ? { serviceId } : {} });
+
+  const renderGrid = (items: ServiceTemplate[]) => (
+    <View style={styles.grid}>
+      {items.map((service) => (
+        <ServiceCard
+          key={service.id}
+          service={service}
+          isAdded={addedIds.includes(service.id)}
+          onPress={() => openForm(service.id)}
+        />
+      ))}
+    </View>
+  );
 
   return (
     <View style={styles.screen}>
@@ -72,21 +88,27 @@ export default function Add() {
           })}
         </ScrollView>
 
-        <Text style={styles.sectionTitle}>Δημοφιλείς στην Ελλάδα</Text>
+        {onlineServices.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Δημοφιλείς στην Ελλάδα</Text>
+            {renderGrid(onlineServices)}
+          </>
+        )}
 
-        <View style={styles.grid}>
-          {visibleServices.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              isAdded={addedIds.includes(service.id)}
-              onPress={() => openForm(service.id)}
-            />
-          ))}
-        </View>
+        {localServices.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Συνδρομές εκτός internet</Text>
+              <Text style={styles.sectionHint}>
+                Ό,τι πληρώνεις σταθερά: γυμναστήριο, μαθήματα, φροντιστήριο, ενοίκιο.
+              </Text>
+            </View>
+            {renderGrid(localServices)}
+          </>
+        )}
 
         {visibleServices.length === 0 && (
-          <Text style={styles.empty}>Δεν βρέθηκε. Πρόσθεσέ το χειροκίνητα από κάτω.</Text>
+          <Text style={styles.empty}>Δεν βρέθηκε. Πρόσθεσέ το μόνος σου από κάτω.</Text>
         )}
       </ScrollView>
 
@@ -96,7 +118,8 @@ export default function Add() {
           accessibilityRole="button"
           style={({ pressed }) => [styles.manualButton, pressed && styles.pressed]}
         >
-          <Text style={styles.manualButtonText}>Πρόσθεσε κάτι άλλο χειροκίνητα</Text>
+          <Ionicons name="add" size={20} color={colors.background} />
+          <Text style={styles.manualButtonText}>Πρόσθεσε κάτι δικό σου</Text>
         </Pressable>
       </View>
     </View>
@@ -133,7 +156,9 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.text },
   chipText: { color: colors.text, fontSize: 14, fontFamily: fonts.medium },
   chipTextActive: { color: colors.background },
+  sectionHeader: { gap: 4, marginTop: spacing.sm },
   sectionTitle: { color: colors.text, fontSize: 16, fontFamily: fonts.semibold, marginTop: spacing.xs },
+  sectionHint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   footer: {
@@ -143,6 +168,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   manualButton: {
+    flexDirection: 'row',
+    gap: spacing.xs,
     height: 52,
     borderRadius: radius.md,
     backgroundColor: colors.text,

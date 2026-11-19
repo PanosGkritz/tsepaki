@@ -13,7 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { FEEDBACK_EMAIL, PLAY_STORE_URL } from '../../constants/app';
+import { AppLogo } from '../../components/AppLogo';
+import { FEEDBACK_EMAIL, PLAY_STORE_URL, PRIVACY_POLICY_URL } from '../../constants/app';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
 import { deleteAllData } from '../../db/maintenance';
 import { DEFAULT_SETTINGS, getSettings, saveSetting, type AppSettings } from '../../db/settings';
@@ -84,7 +85,12 @@ export default function Settings() {
   };
 
   const saveName = () => {
-    if (nameDraft.trim() !== settings.userName) save('userName', nameDraft.trim());
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setNameDraft(settings.userName);
+      return;
+    }
+    if (trimmed !== settings.userName) save('userName', trimmed);
   };
 
   const toggleDay = (day: number) => {
@@ -197,7 +203,7 @@ export default function Settings() {
         </View>
 
         <View style={styles.row}>
-          <Text style={[styles.rowLabel, styles.flex]}>Ετήσιες συνδρομές: ειδοποίησέ με μια εβδομάδα πριν</Text>
+          <Text style={[styles.rowLabel, styles.flex]}>Ετήσιες συνδρομές: μία εβδομάδα πριν</Text>
           <Switch
             value={settings.yearlyReminder}
             onValueChange={(value) => save('yearlyReminder', value)}
@@ -254,10 +260,6 @@ export default function Settings() {
       )}
 
       <Section title="Δεδομένα">
-        <Text style={styles.hint}>
-          Όλα τα δεδομένα σου μένουν μόνο σε αυτό το κινητό. Δεν συνδεόμαστε με τράπεζα και δεν
-          στέλνουμε τίποτα σε server.
-        </Text>
         <Pressable
           onPress={confirmDeleteAll}
           accessibilityRole="button"
@@ -265,14 +267,32 @@ export default function Settings() {
         >
           <Text style={styles.deleteText}>Διαγραφή όλων των δεδομένων</Text>
         </Pressable>
+        <Text style={styles.hint}>Σβήνει όλες τις συνδρομές και το ιστορικό σου.</Text>
       </Section>
 
       <Section title="Σχετικά">
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Έκδοση</Text>
-          <Text style={styles.rowValue}>{APP_VERSION}</Text>
+        <View style={styles.about}>
+          <AppLogo size={64} />
+          <View style={styles.aboutText}>
+            <Text style={styles.appName}>Τσεπάκι</Text>
+            <Text style={styles.rowValue}>Έκδοση {APP_VERSION}</Text>
+          </View>
+          <Text style={styles.tagline}>Σου θυμίζω κάθε χρέωση πριν φύγουν τα λεφτά.</Text>
+          <Text style={styles.maker}>Φτιαγμένο στην Ελλάδα από τον PG</Text>
         </View>
+
+        <View style={styles.divider} />
+
         <Text style={styles.hint}>
+          Όλα τα δεδομένα σου μένουν μόνο σε αυτό το κινητό. Δεν συνδεόμαστε με τράπεζα και δεν
+          στέλνουμε τίποτα σε server.
+        </Text>
+
+        {PRIVACY_POLICY_URL ? (
+          <LinkRow label="Πολιτική απορρήτου" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} />
+        ) : null}
+
+        <Text style={styles.legal}>
           Τα λογότυπα και τα ονόματα των υπηρεσιών ανήκουν στους κατόχους τους και χρησιμοποιούνται
           μόνο για να αναγνωρίζεις τις συνδρομές σου. Τα λογότυπα παρέχονται από το Brandfetch, στο
           οποίο στέλνεται μόνο το όνομα του site της υπηρεσίας.
@@ -347,8 +367,14 @@ const styles = StyleSheet.create({
   rowValueOn: { color: colors.accentBright },
   preview: { color: colors.text, fontSize: 14, fontFamily: fonts.regular, marginTop: 4 },
   hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 19 },
+  legal: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, lineHeight: 17 },
   warning: { color: colors.warning, fontSize: 13, fontFamily: fonts.medium },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  about: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  aboutText: { alignItems: 'center', gap: 2 },
+  appName: { color: colors.text, fontSize: 22, fontFamily: fonts.semibold, letterSpacing: -0.3 },
+  tagline: { color: colors.text, fontSize: 14, fontFamily: fonts.regular, textAlign: 'center' },
+  maker: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   input: {
     backgroundColor: colors.surfaceRaised,
     borderRadius: radius.md,
