@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CategoryBreakdown } from '../../components/CategoryBreakdown';
 import { MonthlyBars } from '../../components/MonthlyBars';
@@ -61,7 +61,7 @@ export default function History() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [query, setQuery] = useState('');
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const chargesY = useRef(0);
   const pendingScroll = useRef(false);
 
