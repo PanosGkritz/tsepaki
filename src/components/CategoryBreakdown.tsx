@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { fonts, radius } from '../constants/theme';
 import { getCategoryLabel } from '../data/categories';
-import { formatEuro } from '../lib/format';
+import { formatMoney } from '../lib/format';
 import type { CategoryShare } from '../lib/stats';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
@@ -10,7 +10,7 @@ type CategoryBreakdownProps = { items: CategoryShare[] };
 
 export const CategoryBreakdown = ({ items }: CategoryBreakdownProps) => {
   const styles = useStyles();
-  const { t, language } = usePreferences();
+  const { t, language, hideAmounts } = usePreferences();
 
   return (
     <View style={styles.wrapper}>
@@ -25,7 +25,7 @@ export const CategoryBreakdown = ({ items }: CategoryBreakdownProps) => {
           <View key={item.category} style={styles.row}>
             <View style={[styles.dot, { backgroundColor: item.color }]} />
             <Text style={styles.name}>{getCategoryLabel(item.category, t)}</Text>
-            <Text style={styles.amount}>{formatEuro(item.amount, language)}</Text>
+            <Text style={styles.amount}>{formatMoney(item.amount, language, hideAmounts)}</Text>
             <Text style={styles.share}>{Math.round(item.share * 100)}%</Text>
           </View>
         ))}

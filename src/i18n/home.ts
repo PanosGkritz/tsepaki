@@ -8,6 +8,8 @@ export const homeStrings = {
   'summary.caption': { el: 'το σύνολο αυτού του μήνα', en: 'total for this month' },
   'summary.paid': { el: 'Πληρώθηκαν', en: 'Paid' },
   'summary.paidLabel': { el: 'Δες τι πληρώθηκε', en: 'See what was paid' },
+  'summary.hideAmounts': { el: 'Κρύψε τα ποσά', en: 'Hide amounts' },
+  'summary.showAmounts': { el: 'Δείξε τα ποσά', en: 'Show amounts' },
   'summary.remaining': { el: 'Απομένουν', en: 'Remaining' },
 
   'upcoming.title': { el: 'Επόμενες χρεώσεις', en: 'Upcoming charges' },

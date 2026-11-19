@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { fonts, radius, spacing } from '../constants/theme';
-import { formatEuro } from '../lib/format';
+import { formatMoney } from '../lib/format';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 
@@ -21,7 +21,8 @@ export const MonthSummaryCard = ({
   onPaidPress,
 }: MonthSummaryCardProps) => {
   const styles = useStyles();
-  const { t, language } = usePreferences();
+  const { colors, t, language, hideAmounts, setHideAmounts } = usePreferences();
+  const money = (amount: number) => formatMoney(amount, language, hideAmounts);
   const remaining = total - paid;
   const countLabel =
     subscriptionCount === 1
@@ -32,24 +33,39 @@ export const MonthSummaryCard = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.month}>{monthLabel}</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{countLabel}</Text>
+        <View style={styles.headerSide}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{countLabel}</Text>
+          </View>
+          <Pressable
+            onPress={() => setHideAmounts(!hideAmounts)}
+            accessibilityRole="button"
+            accessibilityLabel={t(hideAmounts ? 'summary.showAmounts' : 'summary.hideAmounts')}
+            hitSlop={8}
+            style={({ pressed }) => [styles.eyeButton, pressed && styles.eyePressed]}
+          >
+            <Ionicons
+              name={hideAmounts ? 'eye-off-outline' : 'eye-outline'}
+              size={17}
+              color={colors.onAccent}
+            />
+          </Pressable>
         </View>
       </View>
 
       <View style={styles.totalBlock}>
-        <Text style={styles.total}>{formatEuro(total, language)}</Text>
+        <Text style={styles.total}>{money(total)}</Text>
         <Text style={styles.caption}>{t('summary.caption')}</Text>
       </View>
 
       <View style={styles.stats}>
         <Stat
           label={t('summary.paid')}
-          value={formatEuro(paid, language)}
+          value={money(paid)}
           onPress={onPaidPress}
           accessibilityLabel={t('summary.paidLabel')}
         />
-        <Stat label={t('summary.remaining')} value={formatEuro(remaining, language)} />
+        <Stat label={t('summary.remaining')} value={money(remaining)} />
       </View>
     </View>
   );
@@ -102,6 +118,16 @@ const useStyles = createStyles((colors) => ({
     alignItems: 'center',
   },
   month: { color: colors.onAccent, opacity: 0.85, fontSize: 14, fontFamily: fonts.medium },
+  headerSide: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  eyeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyePressed: { backgroundColor: 'rgba(255,255,255,0.28)' },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderRadius: radius.full,

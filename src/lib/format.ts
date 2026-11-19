@@ -16,3 +16,8 @@ const getFormatter = (language: Language) => {
 
 export const formatEuro = (amount: number, language: Language = 'el') =>
   getFormatter(language).format(amount);
+
+const HIDDEN_AMOUNT: Record<Language, string> = { el: '••• €', en: '€•••' };
+
+export const formatMoney = (amount: number, language: Language = 'el', hidden = false) =>
+  hidden ? HIDDEN_AMOUNT[language] : formatEuro(amount, language);

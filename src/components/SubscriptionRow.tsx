@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fonts } from '../constants/theme';
-import { formatEuro } from '../lib/format';
+import { formatMoney } from '../lib/format';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import type { Subscription } from '../types/subscription';
@@ -12,6 +12,7 @@ type SubscriptionRowProps = {
   showDivider: boolean;
   onPress?: () => void;
   action?: React.ReactNode;
+  hideAmount?: boolean;
 };
 
 export const SubscriptionRow = ({
@@ -20,17 +21,18 @@ export const SubscriptionRow = ({
   showDivider,
   onPress,
   action,
+  hideAmount = false,
 }: SubscriptionRowProps) => {
   const styles = useStyles();
   const { language } = usePreferences();
-  const price = formatEuro(subscription.price, language);
+  const price = formatMoney(subscription.price, language, hideAmount);
 
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${subscription.name}, ${price}`}
+      accessibilityLabel={hideAmount ? subscription.name : `${subscription.name}, ${price}`}
       style={({ pressed }) => [
         styles.row,
         showDivider && styles.rowDivider,

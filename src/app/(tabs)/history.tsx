@@ -12,7 +12,7 @@ import { getSubscriptions } from '../../db/subscriptions';
 import { LOCALES, type Language } from '../../i18n';
 import type { CalendarItem } from '../../lib/calendar';
 import { formatChargeDay, parseIsoDate, toIsoDate } from '../../lib/dates';
-import { formatEuro } from '../../lib/format';
+import { formatMoney } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
 import { getCategoryBreakdown, getMonthlyTotals } from '../../lib/stats';
 import { createStyles } from '../../lib/styles';
@@ -54,7 +54,8 @@ const openSubscription = (id: string) =>
 export default function History() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, language } = usePreferences();
+  const { colors, t, language, hideAmounts } = usePreferences();
+  const money = (amount: number) => formatMoney(amount, language, hideAmounts);
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   const [charges, setCharges] = useState<CalendarItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -128,11 +129,11 @@ export default function History() {
 
       <View style={styles.card}>
         <Text style={styles.cardLabel}>{t('history.paidThisYear')}</Text>
-        <Text style={styles.bigAmount}>{formatEuro(paidThisYear, language)}</Text>
+        <Text style={styles.bigAmount}>{money(paidThisYear)}</Text>
 
         <View style={styles.stats}>
           <Stat label={t('history.charges')} value={String(chargesThisYear.length)} />
-          <Stat label={t('history.average')} value={formatEuro(monthlyAverage, language)} />
+          <Stat label={t('history.average')} value={money(monthlyAverage)} />
         </View>
       </View>
 
@@ -183,7 +184,7 @@ export default function History() {
         <View key={group.key} style={styles.monthSection}>
           <View style={styles.monthHeader}>
             <Text style={styles.monthLabel}>{group.label}</Text>
-            <Text style={styles.monthTotal}>{formatEuro(group.total, language)}</Text>
+            <Text style={styles.monthTotal}>{money(group.total)}</Text>
           </View>
 
           <View style={styles.list}>
@@ -192,6 +193,7 @@ export default function History() {
                 key={item.key}
                 subscription={item.subscription}
                 showDivider={index < group.items.length - 1}
+                hideAmount={hideAmounts}
                 subtitle={formatChargeDay(item.date, language)}
                 onPress={() => openSubscription(item.subscription.id)}
               />

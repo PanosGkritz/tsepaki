@@ -17,9 +17,13 @@ type Preferences = {
   isDark: boolean;
   themeMode: ThemeMode;
   language: Language;
+  hideAmounts: boolean;
+  appLock: boolean;
   t: Translate;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLanguage: (language: Language) => Promise<void>;
+  setHideAmounts: (hidden: boolean) => Promise<void>;
+  setAppLock: (enabled: boolean) => Promise<void>;
 };
 
 const PreferencesContext = createContext<Preferences | null>(null);
@@ -31,12 +35,16 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
   const systemScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [language, setLanguageState] = useState<Language>(getDeviceLanguage);
+  const [hideAmounts, setHideAmountsState] = useState(false);
+  const [appLock, setAppLockState] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     getSettings(db).then((settings) => {
       setThemeModeState(settings.themeMode);
       if (settings.language) setLanguageState(settings.language);
+      setHideAmountsState(settings.hideAmounts);
+      setAppLockState(settings.appLock);
       setReady(true);
     });
   }, [db]);
@@ -49,6 +57,8 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
       isDark,
       themeMode,
       language,
+      hideAmounts,
+      appLock,
       t: (key: StringKey, params?: TranslateParams) => translate(language, key, params),
       setThemeMode: async (mode) => {
         setThemeModeState(mode);
@@ -58,8 +68,16 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
         setLanguageState(nextLanguage);
         await saveSetting(db, 'language', nextLanguage);
       },
+      setHideAmounts: async (hidden) => {
+        setHideAmountsState(hidden);
+        await saveSetting(db, 'hideAmounts', hidden);
+      },
+      setAppLock: async (enabled) => {
+        setAppLockState(enabled);
+        await saveSetting(db, 'appLock', enabled);
+      },
     }),
-    [db, isDark, themeMode, language],
+    [db, isDark, themeMode, language, hideAmounts, appLock],
   );
 
   if (!ready) {

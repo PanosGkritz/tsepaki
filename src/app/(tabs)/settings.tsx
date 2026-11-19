@@ -21,6 +21,7 @@ import { DEFAULT_SETTINGS, getSettings, saveSetting, type AppSettings } from '..
 import { getSubscriptions } from '../../db/subscriptions';
 import type { Language, StringKey } from '../../i18n';
 import { formatChargeDay, toIsoDate } from '../../lib/dates';
+import { authenticate, canUseLock } from '../../lib/lock';
 import {
   getPermissionState,
   getScheduledCount,
@@ -71,7 +72,8 @@ const formatReminder = (reminder: Reminder, language: Language) =>
 export default function Settings() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, themeMode, language, setThemeMode, setLanguage } = usePreferences();
+  const { colors, t, themeMode, language, appLock, setThemeMode, setLanguage, setAppLock } =
+    usePreferences();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [nameDraft, setNameDraft] = useState('');
   const [permission, setPermission] = useState<PermissionState>('undetermined');
@@ -127,6 +129,20 @@ export default function Settings() {
     await setLanguage(nextLanguage);
     await syncReminders(db);
     await refresh();
+  };
+
+  const toggleAppLock = async (enabled: boolean) => {
+    if (!enabled) {
+      await setAppLock(false);
+      return;
+    }
+
+    if (!(await canUseLock())) {
+      Alert.alert(t('lock.unavailableTitle'), t('lock.unavailable'));
+      return;
+    }
+
+    if (await authenticate(t('lock.confirm'), t('common.cancel'))) await setAppLock(true);
   };
 
   const handleTest = async () => {
@@ -222,6 +238,19 @@ export default function Settings() {
         </View>
       </Section>
 
+      <Section title={t('settings.security')}>
+        <View style={styles.row}>
+          <Text style={[styles.rowLabel, styles.flex]}>{t('settings.appLock')}</Text>
+          <Switch
+            value={appLock}
+            onValueChange={toggleAppLock}
+            trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        <Text style={styles.hint}>{t('settings.appLockHint')}</Text>
+      </Section>
+
       <Section title={t('settings.notifications')}>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>{t('settings.status')}</Text>
@@ -279,7 +308,9 @@ export default function Settings() {
           <View style={styles.next}>
             <Text style={styles.rowLabel}>{t('settings.nextReminder')}</Text>
             <Text style={styles.rowValue}>{formatReminder(nextReminder, language)}</Text>
-            <Text style={styles.preview}>«{nextReminder.body}»</Text>
+            <Text style={styles.preview}>
+              {language === 'el' ? `«${nextReminder.body}»` : `“${nextReminder.body}”`}
+            </Text>
           </View>
         )}
 

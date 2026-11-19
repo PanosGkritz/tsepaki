@@ -22,6 +22,23 @@ export const settingsStrings = {
 
   'settings.language': { el: 'Γλώσσα', en: 'Language' },
 
+  'settings.security': { el: 'Ασφάλεια', en: 'Security' },
+  'settings.appLock': { el: 'Κλείδωμα εφαρμογής', en: 'App lock' },
+  'settings.appLockHint': {
+    el: 'Ζητάει Face ID, δακτυλικό ή τον κωδικό του κινητού κάθε φορά που ανοίγεις το Τσεπάκι.',
+    en: 'Asks for Face ID, fingerprint or your phone’s passcode every time you open Tsepaki.',
+  },
+
+  'lock.title': { el: 'Το Τσεπάκι είναι κλειδωμένο', en: 'Tsepaki is locked' },
+  'lock.unlock': { el: 'Ξεκλείδωμα', en: 'Unlock' },
+  'lock.prompt': { el: 'Ξεκλείδωσε το Τσεπάκι', en: 'Unlock Tsepaki' },
+  'lock.confirm': { el: 'Επιβεβαίωσε για να ενεργοποιηθεί το κλείδωμα', en: 'Confirm to turn on the lock' },
+  'lock.unavailableTitle': { el: 'Δεν γίνεται κλείδωμα', en: 'Can’t turn on the lock' },
+  'lock.unavailable': {
+    el: 'Βάλε πρώτα κωδικό, Face ID ή δακτυλικό στις ρυθμίσεις του κινητού σου.',
+    en: 'Set up a passcode, Face ID or fingerprint in your phone’s settings first.',
+  },
+
   'settings.notifications': { el: 'Ειδοποιήσεις', en: 'Notifications' },
   'settings.status': { el: 'Κατάσταση', en: 'Status' },
   'settings.status.granted': { el: 'Ενεργές', en: 'On' },

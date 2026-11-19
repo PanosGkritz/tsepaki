@@ -10,6 +10,8 @@ export type AppSettings = {
   yearlyReminder: boolean;
   themeMode: ThemeMode;
   language: Language | null;
+  hideAmounts: boolean;
+  appLock: boolean;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -20,6 +22,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   yearlyReminder: true,
   themeMode: 'system',
   language: null,
+  hideAmounts: false,
+  appLock: false,
 };
 
 const parseJson = (text: string): unknown => {
@@ -54,6 +58,10 @@ const applyStoredValue = (settings: AppSettings, key: string, value: unknown): A
       return isThemeMode(value) ? { ...settings, themeMode: value } : settings;
     case 'language':
       return isLanguage(value) ? { ...settings, language: value } : settings;
+    case 'hideAmounts':
+      return typeof value === 'boolean' ? { ...settings, hideAmounts: value } : settings;
+    case 'appLock':
+      return typeof value === 'boolean' ? { ...settings, appLock: value } : settings;
     default:
       return settings;
   }

@@ -29,7 +29,7 @@ export const UpcomingCharges = ({
   pageSize = 4,
 }: UpcomingChargesProps) => {
   const styles = useStyles();
-  const { colors, t, language } = usePreferences();
+  const { colors, t, language, hideAmounts } = usePreferences();
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
 
@@ -50,6 +50,7 @@ export const UpcomingCharges = ({
         key={subscription.id}
         subscription={subscription}
         showDivider={index < count - 1}
+        hideAmount={hideAmounts}
         onPress={() => openSubscription(subscription.id)}
         subtitle={
           <>

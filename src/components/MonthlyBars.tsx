@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fonts } from '../constants/theme';
 import type { Language, Translate } from '../i18n';
-import { formatEuro } from '../lib/format';
+import { formatEuro, formatMoney } from '../lib/format';
 import { getMonthName, toAccusative, type MonthTotal } from '../lib/stats';
 import { createStyles } from '../lib/styles';
 import { getMonthLabel } from '../lib/summary';
@@ -31,7 +31,7 @@ type MonthlyBarsProps = { months: MonthTotal[] };
 
 export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
   const styles = useStyles();
-  const { t, language } = usePreferences();
+  const { t, language, hideAmounts } = usePreferences();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const foundIndex = months.findIndex((month) => month.key === selectedKey);
@@ -40,7 +40,9 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
   if (!selected) return null;
 
   const maxTotal = Math.max(0, ...months.map((month) => month.total));
-  const change = describeChange(selected, months[selectedIndex - 1], t, language);
+  const change = hideAmounts
+    ? null
+    : describeChange(selected, months[selectedIndex - 1], t, language);
 
   return (
     <View style={styles.wrapper}>
@@ -49,7 +51,7 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
           {getMonthLabel(selected.date, language)}
           {selected.isCurrent ? t('bars.withRemaining') : ''}
         </Text>
-        <Text style={styles.total}>{formatEuro(selected.total, language)}</Text>
+        <Text style={styles.total}>{formatMoney(selected.total, language, hideAmounts)}</Text>
         {change && <Text style={styles.change}>{change}</Text>}
       </View>
 
@@ -66,7 +68,11 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
               key={month.key}
               onPress={() => setSelectedKey(month.key)}
               accessibilityRole="button"
-              accessibilityLabel={`${getMonthLabel(month.date, language)}: ${formatEuro(month.total, language)}`}
+              accessibilityLabel={
+                hideAmounts
+                  ? getMonthLabel(month.date, language)
+                  : `${getMonthLabel(month.date, language)}: ${formatEuro(month.total, language)}`
+              }
               accessibilityState={{ selected: isSelected }}
               style={styles.column}
             >
