@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 6;
+const DATABASE_VERSION = 7;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -96,6 +96,24 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     `);
 
     currentVersion = 6;
+  }
+
+  if (currentVersion === 6) {
+    await db.execAsync(`
+      UPDATE subscriptions SET category = CASE category
+        WHEN 'Streaming' THEN 'streaming'
+        WHEN 'Μουσική' THEN 'music'
+        WHEN 'Gaming' THEN 'gaming'
+        WHEN 'AI' THEN 'ai'
+        WHEN 'Αποθήκευση' THEN 'storage'
+        WHEN 'Κινητό' THEN 'mobile'
+        WHEN 'TV' THEN 'tv'
+        WHEN 'Δραστηριότητες' THEN 'activities'
+        ELSE 'other'
+      END;
+    `);
+
+    currentVersion = 7;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

@@ -1,4 +1,19 @@
-export const colors = {
+export type ThemeMode = 'system' | 'dark' | 'light';
+
+export type ThemeColors = {
+  background: string;
+  surface: string;
+  surfaceRaised: string;
+  border: string;
+  text: string;
+  textMuted: string;
+  accent: string;
+  accentBright: string;
+  warning: string;
+  onAccent: string;
+};
+
+export const darkColors: ThemeColors = {
   background: '#0E0F12',
   surface: '#17191E',
   surfaceRaised: '#1F2228',
@@ -9,7 +24,23 @@ export const colors = {
   accentBright: '#4CC38A',
   warning: '#F5A35C',
   onAccent: '#FFFFFF',
-} as const;
+};
+
+export const lightColors: ThemeColors = {
+  background: '#F6F6F3',
+  surface: '#FFFFFF',
+  surfaceRaised: '#EEEEEA',
+  border: '#E2E2DD',
+  text: '#141516',
+  textMuted: '#6B6E76',
+  accent: '#1F6F54',
+  accentBright: '#17784F',
+  warning: '#B4500B',
+  onAccent: '#FFFFFF',
+};
+
+// Παλιό όνομα: μένει μέχρι να περάσουν όλες οι οθόνες στο useTheme().
+export const colors = darkColors;
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 

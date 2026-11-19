@@ -1,3 +1,4 @@
+import type { Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
 import { addCycle, toIsoDate } from './dates';
 
@@ -9,7 +10,10 @@ export type CalendarItem = {
   status: 'paid' | 'upcoming';
 };
 
-export const WEEKDAY_SHORT = ['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'];
+export const WEEKDAY_SHORT: Record<Language, string[]> = {
+  el: ['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'],
+  en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+};
 
 export const getMonthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 

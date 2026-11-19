@@ -1,23 +1,40 @@
+import type { Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
 import { toIsoDate } from './dates';
 
-const MONTHS = [
-  'Ιανουάριος',
-  'Φεβρουάριος',
-  'Μάρτιος',
-  'Απρίλιος',
-  'Μάιος',
-  'Ιούνιος',
-  'Ιούλιος',
-  'Αύγουστος',
-  'Σεπτέμβριος',
-  'Οκτώβριος',
-  'Νοέμβριος',
-  'Δεκέμβριος',
-];
+const MONTHS: Record<Language, string[]> = {
+  el: [
+    'Ιανουάριος',
+    'Φεβρουάριος',
+    'Μάρτιος',
+    'Απρίλιος',
+    'Μάιος',
+    'Ιούνιος',
+    'Ιούλιος',
+    'Αύγουστος',
+    'Σεπτέμβριος',
+    'Οκτώβριος',
+    'Νοέμβριος',
+    'Δεκέμβριος',
+  ],
+  en: [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ],
+};
 
-export const getMonthLabel = (date = new Date()) =>
-  `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+export const getMonthLabel = (date = new Date(), language: Language = 'el') =>
+  `${MONTHS[language][date.getMonth()]} ${date.getFullYear()}`;
 
 export const getMonthRange = (date = new Date()) => ({
   from: toIsoDate(new Date(date.getFullYear(), date.getMonth(), 1)),

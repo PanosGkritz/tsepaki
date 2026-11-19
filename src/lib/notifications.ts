@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { getDeviceLanguage, type Language } from '../i18n';
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined';
 
@@ -21,11 +22,33 @@ export const PAID_ACTION = 'paid';
 const CHANNEL_ID = 'charges';
 const CHARGE_DAY_CATEGORY = 'charge-day';
 
+const TEXTS: Record<Language, { channel: string; paid: string; testBody: string }> = {
+  el: {
+    channel: 'Υπενθυμίσεις χρεώσεων',
+    paid: 'Το πλήρωσα',
+    testBody: 'Έτσι θα σου θυμίζω τις χρεώσεις. Σήμερα σού τραβάει 13,99 € το Netflix.',
+  },
+  en: {
+    channel: 'Charge reminders',
+    paid: 'I paid it',
+    testBody: 'This is how I’ll remind you of charges. Netflix charges you €13.99 today.',
+  },
+};
+
 const toPermissionState = (status: string): PermissionState => {
   if (status === 'granted') return 'granted';
   if (status === 'denied') return 'denied';
   return 'undetermined';
 };
+
+const registerChargeActions = (language: Language) =>
+  Notifications.setNotificationCategoryAsync(CHARGE_DAY_CATEGORY, [
+    {
+      identifier: PAID_ACTION,
+      buttonTitle: TEXTS[language].paid,
+      options: { opensAppToForeground: true },
+    },
+  ]);
 
 export const setupNotifications = () => {
   Notifications.setNotificationHandler({
@@ -37,17 +60,12 @@ export const setupNotifications = () => {
     }),
   });
 
-  Notifications.setNotificationCategoryAsync(CHARGE_DAY_CATEGORY, [
-    {
-      identifier: PAID_ACTION,
-      buttonTitle: 'Το πλήρωσα',
-      options: { opensAppToForeground: true },
-    },
-  ]);
+  const language = getDeviceLanguage();
+  registerChargeActions(language);
 
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Υπενθυμίσεις χρεώσεων',
+      name: TEXTS[language].channel,
       importance: Notifications.AndroidImportance.HIGH,
     });
   }
@@ -78,7 +96,8 @@ export const requestPermission = async () => {
   return toPermissionState(status);
 };
 
-export const replaceScheduledReminders = async (reminders: Reminder[]) => {
+export const replaceScheduledReminders = async (reminders: Reminder[], language: Language) => {
+  await registerChargeActions(language);
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   for (const reminder of reminders) {
@@ -106,13 +125,15 @@ export const getScheduledCount = async () => {
   return scheduled.length;
 };
 
-export const sendTestNotification = async () => {
+export const sendTestNotification = async (language: Language) => {
+  await registerChargeActions(language);
+
   const testPayload: ChargePayload = { subscriptionIds: [], chargeDate: '' };
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Tsepaki',
-      body: 'Έτσι θα σου θυμίζω τις χρεώσεις. Σήμερα σού τραβάει 13,99 € το Netflix.',
+      body: TEXTS[language].testBody,
       data: testPayload,
       categoryIdentifier: CHARGE_DAY_CATEGORY,
     },

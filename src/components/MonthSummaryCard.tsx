@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius, spacing } from '../constants/theme';
+import { Text, View } from 'react-native';
+import { fonts, radius, spacing } from '../constants/theme';
 import { formatEuro } from '../lib/format';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 
 type MonthSummaryCardProps = {
   monthLabel: string;
@@ -15,25 +17,31 @@ export const MonthSummaryCard = ({
   paid,
   subscriptionCount,
 }: MonthSummaryCardProps) => {
+  const styles = useStyles();
+  const { t, language } = usePreferences();
   const remaining = total - paid;
+  const countLabel =
+    subscriptionCount === 1
+      ? t('summary.countOne')
+      : t('summary.count', { count: subscriptionCount });
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.month}>{monthLabel}</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{subscriptionCount} συνδρομές</Text>
+          <Text style={styles.badgeText}>{countLabel}</Text>
         </View>
       </View>
 
       <View style={styles.totalBlock}>
-        <Text style={styles.total}>{formatEuro(total)}</Text>
-        <Text style={styles.caption}>το σύνολο αυτού του μήνα</Text>
+        <Text style={styles.total}>{formatEuro(total, language)}</Text>
+        <Text style={styles.caption}>{t('summary.caption')}</Text>
       </View>
 
       <View style={styles.stats}>
-        <Stat label="Πληρώθηκαν" value={formatEuro(paid)} />
-        <Stat label="Απομένουν" value={formatEuro(remaining)} />
+        <Stat label={t('summary.paid')} value={formatEuro(paid, language)} />
+        <Stat label={t('summary.remaining')} value={formatEuro(remaining, language)} />
       </View>
     </View>
   );
@@ -41,14 +49,17 @@ export const MonthSummaryCard = ({
 
 type StatProps = { label: string; value: string };
 
-const Stat = ({ label, value }: StatProps) => (
-  <View style={styles.stat}>
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text style={styles.statValue}>{value}</Text>
-  </View>
-);
+const Stat = ({ label, value }: StatProps) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+};
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   card: {
     backgroundColor: colors.accent,
     borderRadius: radius.lg,
@@ -92,4 +103,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontVariant: ['tabular-nums'],
   },
-});
+}));

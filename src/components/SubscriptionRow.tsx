@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts } from '../constants/theme';
+import { fonts } from '../constants/theme';
 import { formatEuro } from '../lib/format';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 import type { Subscription } from '../types/subscription';
 import { ServiceLogo } from './ServiceLogo';
 
@@ -16,34 +18,44 @@ export const SubscriptionRow = ({
   subtitle,
   showDivider,
   onPress,
-}: SubscriptionRowProps) => (
-  <Pressable
-    onPress={onPress}
-    disabled={!onPress}
-    accessibilityRole="button"
-    accessibilityLabel={`${subscription.name}, ${formatEuro(subscription.price)}`}
-    style={({ pressed }) => [styles.row, showDivider && styles.rowDivider, pressed && styles.pressed]}
-  >
-    <ServiceLogo
-      id={subscription.serviceId ?? subscription.id}
-      name={subscription.name}
-      fallbackColor={subscription.color}
-      domain={subscription.serviceId ? undefined : subscription.domain}
-      size={42}
-    />
+}: SubscriptionRowProps) => {
+  const styles = useStyles();
+  const { language } = usePreferences();
+  const price = formatEuro(subscription.price, language);
 
-    <View style={styles.info}>
-      <Text style={styles.name} numberOfLines={1}>
-        {subscription.name}
-      </Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-    </View>
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${subscription.name}, ${price}`}
+      style={({ pressed }) => [
+        styles.row,
+        showDivider && styles.rowDivider,
+        pressed && styles.pressed,
+      ]}
+    >
+      <ServiceLogo
+        id={subscription.serviceId ?? subscription.id}
+        name={subscription.name}
+        fallbackColor={subscription.color}
+        domain={subscription.serviceId ? undefined : subscription.domain}
+        size={42}
+      />
 
-    <Text style={styles.price}>{formatEuro(subscription.price)}</Text>
-  </Pressable>
-);
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
+          {subscription.name}
+        </Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
 
-const styles = StyleSheet.create({
+      <Text style={styles.price}>{price}</Text>
+    </Pressable>
+  );
+};
+
+const useStyles = createStyles((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -64,4 +76,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontVariant: ['tabular-nums'],
   },
-});
+}));

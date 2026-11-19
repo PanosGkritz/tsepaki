@@ -5,16 +5,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { AppLogo } from '../components/AppLogo';
-import { colors, fonts, radius, spacing } from '../constants/theme';
+import { fonts, radius, spacing } from '../constants/theme';
 import { saveSetting } from '../db/settings';
+import type { Language } from '../i18n';
 import { requestPermission } from '../lib/notifications';
 import { syncReminders } from '../lib/reminders';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
+
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
+  { value: 'el', label: 'ΕΛ' },
+  { value: 'en', label: 'EN' },
+];
 
 const askForNotifications = async () => {
   try {
@@ -26,6 +33,8 @@ const askForNotifications = async () => {
 
 export default function Welcome() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, language, setLanguage } = usePreferences();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +45,7 @@ export default function Welcome() {
     if (!canContinue) return;
 
     setSaving(true);
+    await setLanguage(language);
     await saveSetting(db, 'userName', trimmedName);
     await saveSetting(db, 'onboardingDone', true);
     await askForNotifications();
@@ -48,31 +58,47 @@ export default function Welcome() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={styles.languageRow}>
+        {LANGUAGE_OPTIONS.map((option) => {
+          const isActive = option.value === language;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => setLanguage(option.value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={option.value === 'el' ? 'Ελληνικά' : 'English'}
+              style={[styles.languageChip, isActive && styles.languageChipActive]}
+            >
+              <Text style={[styles.languageText, isActive && styles.languageTextActive]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <View style={styles.content}>
         <View style={styles.intro}>
           <AppLogo size={72} />
-          <Text style={styles.title}>Καλώς ήρθες στο Τσεπάκι</Text>
-          <Text style={styles.subtitle}>
-            Σου θυμίζω κάθε χρέωση πριν φύγουν τα λεφτά, για να μη μείνεις ποτέ ταπί.
-          </Text>
+          <Text style={styles.title}>{t('welcome.title')}</Text>
+          <Text style={styles.subtitle}>{t('welcome.subtitle')}</Text>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Πώς να σε φωνάζω;</Text>
+          <Text style={styles.label}>{t('settings.nameLabel')}</Text>
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="π.χ. Πάνο"
+            placeholder={t('settings.namePlaceholder')}
             placeholderTextColor={colors.textMuted}
             style={styles.input}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={finish}
-            accessibilityLabel="Το όνομά σου"
+            accessibilityLabel={t('settings.nameLabel')}
           />
-          <Text style={styles.hint}>
-            Όλα μένουν μόνο στο κινητό σου. Δεν χρειάζεται λογαριασμός.
-          </Text>
+          <Text style={styles.hint}>{t('welcome.hint')}</Text>
         </View>
       </View>
 
@@ -88,19 +114,38 @@ export default function Welcome() {
             pressed && styles.pressed,
           ]}
         >
-          <Text style={styles.buttonText}>Ξεκίνα</Text>
+          <Text style={styles.buttonText}>{t('welcome.start')}</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
+  languageRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 64,
+  },
+  languageChip: {
+    height: 32,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageChipActive: { backgroundColor: colors.text },
+  languageText: { color: colors.text, fontSize: 13, fontFamily: fonts.medium },
+  languageTextActive: { color: colors.background },
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: 100,
+    paddingTop: 32,
     gap: spacing.xl,
   },
   intro: { gap: spacing.md },
@@ -129,4 +174,4 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.4 },
   pressed: { opacity: 0.8 },
   buttonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
-});
+}));

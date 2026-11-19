@@ -2,62 +2,118 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { processDueCharges } from '../db/charges';
 import { getSettings, type AppSettings } from '../db/settings';
 import { getSubscriptions } from '../db/subscriptions';
+import { getDeviceLanguage, type Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
 import { parseIsoDate } from './dates';
 import { formatEuro } from './format';
 import { getPermissionState, replaceScheduledReminders, type Reminder } from './notifications';
 
-type ReminderSettings = Pick<AppSettings, 'reminderDays' | 'reminderHour' | 'yearlyReminder'>;
+type ReminderSettings = Pick<
+  AppSettings,
+  'reminderDays' | 'reminderHour' | 'yearlyReminder' | 'language'
+>;
+
+type Templates = {
+  weekdayOn: string[];
+  today: string[];
+  tomorrow: string[];
+  onDay: string[];
+  categoryTomorrow: Record<string, string>;
+  yearly: string;
+  groupToday: string;
+  groupTomorrow: string;
+  groupOnDay: string;
+  and: string;
+  many: string;
+};
+
+const TEMPLATES: Record<Language, Templates> = {
+  el: {
+    weekdayOn: [
+      'την Κυριακή',
+      'τη Δευτέρα',
+      'την Τρίτη',
+      'την Τετάρτη',
+      'την Πέμπτη',
+      'την Παρασκευή',
+      'το Σάββατο',
+    ],
+    today: [
+      'Σήμερα σού τραβάει {amount}.',
+      'Σήμερα φεύγουν {amount}. Έχεις αρκετά στην κάρτα;',
+      'Σήμερα είναι η μέρα, πάνε {amount}.',
+    ],
+    tomorrow: [
+      'Αύριο σού τραβάει {amount}.',
+      'Αύριο φεύγουν {amount}.',
+      'Ετοιμάσου, αύριο πάνε {amount}.',
+    ],
+    onDay: ['{day} σού τραβάει {amount}.', '{day} φεύγουν {amount}.'],
+    categoryTomorrow: {
+      streaming: 'Αύριο {amount} για να μη σου κόψει τη σειρά στη μέση.',
+      music: 'Αύριο {amount} για να συνεχίσει να παίζει η μουσική.',
+      gaming: 'Αύριο {amount}. Συνέχισε να παίζεις.',
+      ai: 'Ο βοηθός σου ανανεώνεται αύριο, {amount}.',
+      storage: 'Αύριο {amount} για να μη γεμίσει ο χώρος σου.',
+      mobile: 'Αύριο {amount} για το κινητό σου.',
+      tv: 'Αύριο {amount} για την τηλεόραση.',
+      activities: 'Αύριο {amount} για τη δραστηριότητά σου.',
+    },
+    yearly: 'Σε μια βδομάδα ανανεώνεται για όλο τον χρόνο: {amount}.',
+    groupToday: 'Σήμερα φεύγουν συνολικά {amount}.',
+    groupTomorrow: 'Αύριο φεύγουν συνολικά {amount}.',
+    groupOnDay: '{day} φεύγουν συνολικά {amount}.',
+    and: 'και',
+    many: '{count} συνδρομές',
+  },
+  en: {
+    weekdayOn: [
+      'on Sunday',
+      'on Monday',
+      'on Tuesday',
+      'on Wednesday',
+      'on Thursday',
+      'on Friday',
+      'on Saturday',
+    ],
+    today: [
+      'Today you’ll be charged {amount}.',
+      'Today {amount} goes out. Enough on your card?',
+      'It’s today: {amount} is on its way out.',
+    ],
+    tomorrow: [
+      'Tomorrow you’ll be charged {amount}.',
+      'Tomorrow {amount} goes out.',
+      'Heads up, {amount} goes out tomorrow.',
+    ],
+    onDay: ['{day} you’ll be charged {amount}.', '{day} {amount} goes out.'],
+    categoryTomorrow: {
+      streaming: 'Tomorrow {amount}, so your show doesn’t stop mid-season.',
+      music: 'Tomorrow {amount} to keep the music playing.',
+      gaming: 'Tomorrow {amount}. Keep playing.',
+      ai: 'Your assistant renews tomorrow: {amount}.',
+      storage: 'Tomorrow {amount} so your storage doesn’t fill up.',
+      mobile: 'Tomorrow {amount} for your phone plan.',
+      tv: 'Tomorrow {amount} for your TV.',
+      activities: 'Tomorrow {amount} for your activity.',
+    },
+    yearly: 'Renews in one week for the whole year: {amount}.',
+    groupToday: 'Today {amount} goes out in total.',
+    groupTomorrow: 'Tomorrow {amount} goes out in total.',
+    groupOnDay: '{day} {amount} goes out in total.',
+    and: 'and',
+    many: '{count} subscriptions',
+  },
+};
 
 export const YEARLY_EXTRA_DAYS = 7;
 const MAX_REMINDERS = 60;
 
-export const REMINDER_DAY_OPTIONS = [
-  { value: 3, label: '3 μέρες πριν' },
-  { value: 2, label: '2 μέρες πριν' },
-  { value: 1, label: 'Την προηγούμενη' },
-  { value: 0, label: 'Την ημέρα' },
-];
+export const REMINDER_DAY_OPTIONS = [{ value: 3 }, { value: 2 }, { value: 1 }, { value: 0 }];
 
 export const REMINDER_HOUR_OPTIONS = [8, 9, 10, 12, 18, 20];
 
 export const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
-
-const WEEKDAY_ON = [
-  'την Κυριακή',
-  'τη Δευτέρα',
-  'την Τρίτη',
-  'την Τετάρτη',
-  'την Πέμπτη',
-  'την Παρασκευή',
-  'το Σάββατο',
-];
-
-const TODAY_TEMPLATES = [
-  'Σήμερα σού τραβάει {amount}.',
-  'Σήμερα φεύγουν {amount}. Έχεις αρκετά στην κάρτα;',
-  'Σήμερα είναι η μέρα, πάνε {amount}.',
-];
-
-const TOMORROW_TEMPLATES = [
-  'Αύριο σού τραβάει {amount}.',
-  'Αύριο φεύγουν {amount}.',
-  'Ετοιμάσου, αύριο πάνε {amount}.',
-];
-
-const DAY_TEMPLATES = ['{day} σού τραβάει {amount}.', '{day} φεύγουν {amount}.'];
-
-const CATEGORY_TOMORROW: Record<string, string> = {
-  Streaming: 'Αύριο {amount} για να μη σου κόψει τη σειρά στη μέση.',
-  Μουσική: 'Αύριο {amount} για να συνεχίσει να παίζει η μουσική.',
-  Gaming: 'Αύριο {amount}. Συνέχισε να παίζεις.',
-  AI: 'Ο βοηθός σου ανανεώνεται αύριο, {amount}.',
-  Αποθήκευση: 'Αύριο {amount} για να μη γεμίσει ο χώρος σου.',
-  Κινητό: 'Αύριο {amount} για το κινητό σου.',
-  TV: 'Αύριο {amount} για την τηλεόραση.',
-};
-
-const YEARLY_TEMPLATE = 'Σε μια βδομάδα ανανεώνεται για όλο τον χρόνο: {amount}.';
 
 const fill = (template: string, amount: string, day = '') =>
   template.replace('{amount}', amount).replace('{day}', day);
@@ -70,11 +126,11 @@ const pickVariant = (options: string[], seed: string) => {
   return options[hash % options.length];
 };
 
-const joinNames = (subscriptions: Subscription[]) => {
-  if (subscriptions.length > 3) return `${subscriptions.length} συνδρομές`;
+const joinNames = (subscriptions: Subscription[], templates: Templates) => {
+  if (subscriptions.length > 3) return templates.many.replace('{count}', String(subscriptions.length));
   const names = subscriptions.map((subscription) => subscription.name);
   if (names.length === 1) return names[0];
-  return `${names.slice(0, -1).join(', ')} και ${names[names.length - 1]}`;
+  return `${names.slice(0, -1).join(', ')} ${templates.and} ${names[names.length - 1]}`;
 };
 
 const buildReminderDate = (chargeDate: string, daysBefore: number, hour: number) => {
@@ -84,25 +140,38 @@ const buildReminderDate = (chargeDate: string, daysBefore: number, hour: number)
   return date;
 };
 
-const buildSingleBody = (subscription: Subscription, daysBefore: number, day: string, seed: string) => {
-  const amount = formatEuro(subscription.price);
+const buildSingleBody = (
+  subscription: Subscription,
+  daysBefore: number,
+  day: string,
+  seed: string,
+  templates: Templates,
+  language: Language,
+) => {
+  const amount = formatEuro(subscription.price, language);
 
-  if (daysBefore === 0) return fill(pickVariant(TODAY_TEMPLATES, seed), amount);
+  if (daysBefore === 0) return fill(pickVariant(templates.today, seed), amount);
 
   if (daysBefore === 1) {
-    const flavor = CATEGORY_TOMORROW[subscription.category];
-    const options = flavor ? [...TOMORROW_TEMPLATES, flavor] : TOMORROW_TEMPLATES;
+    const flavor = templates.categoryTomorrow[subscription.category];
+    const options = flavor ? [...templates.tomorrow, flavor] : templates.tomorrow;
     return fill(pickVariant(options, seed), amount);
   }
 
-  return fill(pickVariant(DAY_TEMPLATES, seed), amount, day);
+  return fill(pickVariant(templates.onDay, seed), amount, day);
 };
 
-const buildGroupBody = (total: number, daysBefore: number, day: string) => {
-  const amount = formatEuro(total);
-  if (daysBefore === 0) return `Σήμερα φεύγουν συνολικά ${amount}.`;
-  if (daysBefore === 1) return `Αύριο φεύγουν συνολικά ${amount}.`;
-  return `${day} φεύγουν συνολικά ${amount}.`;
+const buildGroupBody = (
+  total: number,
+  daysBefore: number,
+  day: string,
+  templates: Templates,
+  language: Language,
+) => {
+  const amount = formatEuro(total, language);
+  if (daysBefore === 0) return fill(templates.groupToday, amount);
+  if (daysBefore === 1) return fill(templates.groupTomorrow, amount);
+  return fill(templates.groupOnDay, amount, day);
 };
 
 const buildGroupReminder = (
@@ -110,10 +179,12 @@ const buildGroupReminder = (
   group: Subscription[],
   daysBefore: number,
   hour: number,
+  language: Language,
 ): Reminder => {
+  const templates = TEMPLATES[language];
   const id = `${chargeDate}-${daysBefore}`;
   const date = buildReminderDate(chargeDate, daysBefore, hour);
-  const day = capitalize(WEEKDAY_ON[parseIsoDate(chargeDate).getDay()]);
+  const day = capitalize(templates.weekdayOn[parseIsoDate(chargeDate).getDay()]);
   const payload =
     daysBefore === 0
       ? { subscriptionIds: group.map((subscription) => subscription.id), chargeDate }
@@ -125,13 +196,19 @@ const buildGroupReminder = (
       id,
       date,
       title: single.name,
-      body: buildSingleBody(single, daysBefore, day, id),
+      body: buildSingleBody(single, daysBefore, day, id, templates, language),
       payload,
     };
   }
 
   const total = group.reduce((sum, subscription) => sum + subscription.price, 0);
-  return { id, date, title: joinNames(group), body: buildGroupBody(total, daysBefore, day), payload };
+  return {
+    id,
+    date,
+    title: joinNames(group, templates),
+    body: buildGroupBody(total, daysBefore, day, templates, language),
+    payload,
+  };
 };
 
 const groupByChargeDate = (subscriptions: Subscription[]) => {
@@ -143,29 +220,38 @@ const groupByChargeDate = (subscriptions: Subscription[]) => {
   return groups;
 };
 
-const buildYearlyReminders = (subscriptions: Subscription[], hour: number): Reminder[] =>
+const buildYearlyReminders = (
+  subscriptions: Subscription[],
+  hour: number,
+  language: Language,
+): Reminder[] =>
   subscriptions
     .filter((subscription) => subscription.cycle === 'yearly')
     .map((subscription) => ({
       id: `${subscription.id}-${YEARLY_EXTRA_DAYS}`,
       date: buildReminderDate(subscription.nextChargeDate, YEARLY_EXTRA_DAYS, hour),
       title: subscription.name,
-      body: fill(YEARLY_TEMPLATE, formatEuro(subscription.price)),
+      body: fill(TEMPLATES[language].yearly, formatEuro(subscription.price, language)),
     }));
+
+export const resolveLanguage = (settings: Pick<AppSettings, 'language'>) =>
+  settings.language ?? getDeviceLanguage();
 
 export const buildReminders = (
   subscriptions: Subscription[],
   settings: ReminderSettings,
   now = new Date(),
 ): Reminder[] => {
+  const language = resolveLanguage(settings);
+
   const grouped = [...groupByChargeDate(subscriptions).entries()].flatMap(([chargeDate, group]) =>
     settings.reminderDays.map((daysBefore) =>
-      buildGroupReminder(chargeDate, group, daysBefore, settings.reminderHour),
+      buildGroupReminder(chargeDate, group, daysBefore, settings.reminderHour, language),
     ),
   );
 
   const yearly = settings.yearlyReminder
-    ? buildYearlyReminders(subscriptions, settings.reminderHour)
+    ? buildYearlyReminders(subscriptions, settings.reminderHour, language)
     : [];
 
   return [...grouped, ...yearly]
@@ -184,7 +270,10 @@ const runSync = async (db: SQLiteDatabase) => {
   try {
     if ((await getPermissionState()) !== 'granted') return;
     const [subscriptions, settings] = await Promise.all([getSubscriptions(db), getSettings(db)]);
-    await replaceScheduledReminders(buildReminders(subscriptions, settings));
+    await replaceScheduledReminders(
+      buildReminders(subscriptions, settings),
+      resolveLanguage(settings),
+    );
   } catch {
     // Αν αποτύχουν οι ειδοποιήσεις, η υπόλοιπη εφαρμογή συνεχίζει κανονικά.
   }

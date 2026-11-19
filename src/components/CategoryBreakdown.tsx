@@ -1,32 +1,40 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius } from '../constants/theme';
+import { Text, View } from 'react-native';
+import { fonts, radius } from '../constants/theme';
+import { getCategoryLabel } from '../data/categories';
 import { formatEuro } from '../lib/format';
 import type { CategoryShare } from '../lib/stats';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 
 type CategoryBreakdownProps = { items: CategoryShare[] };
 
-export const CategoryBreakdown = ({ items }: CategoryBreakdownProps) => (
-  <View style={styles.wrapper}>
-    <View style={styles.track}>
-      {items.map((item) => (
-        <View key={item.category} style={{ flex: item.share, backgroundColor: item.color }} />
-      ))}
-    </View>
+export const CategoryBreakdown = ({ items }: CategoryBreakdownProps) => {
+  const styles = useStyles();
+  const { t, language } = usePreferences();
 
-    <View style={styles.legend}>
-      {items.map((item) => (
-        <View key={item.category} style={styles.row}>
-          <View style={[styles.dot, { backgroundColor: item.color }]} />
-          <Text style={styles.name}>{item.category}</Text>
-          <Text style={styles.amount}>{formatEuro(item.amount)}</Text>
-          <Text style={styles.share}>{Math.round(item.share * 100)}%</Text>
-        </View>
-      ))}
-    </View>
-  </View>
-);
+  return (
+    <View style={styles.wrapper}>
+      <View style={styles.track}>
+        {items.map((item) => (
+          <View key={item.category} style={{ flex: item.share, backgroundColor: item.color }} />
+        ))}
+      </View>
 
-const styles = StyleSheet.create({
+      <View style={styles.legend}>
+        {items.map((item) => (
+          <View key={item.category} style={styles.row}>
+            <View style={[styles.dot, { backgroundColor: item.color }]} />
+            <Text style={styles.name}>{getCategoryLabel(item.category, t)}</Text>
+            <Text style={styles.amount}>{formatEuro(item.amount, language)}</Text>
+            <Text style={styles.share}>{Math.round(item.share * 100)}%</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const useStyles = createStyles((colors) => ({
   wrapper: { gap: 16 },
   track: {
     flexDirection: 'row',
@@ -53,4 +61,4 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontVariant: ['tabular-nums'],
   },
-});
+}));

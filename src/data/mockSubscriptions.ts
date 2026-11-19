@@ -8,7 +8,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-19',
     color: '#E50914',
-    category: 'Streaming',
+    category: 'streaming',
   },
   {
     id: 'spotify',
@@ -17,7 +17,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-22',
     color: '#1DB954',
-    category: 'Μουσική',
+    category: 'music',
   },
   {
     id: 'telekom',
@@ -26,7 +26,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-25',
     color: '#E20074',
-    category: 'Κινητό',
+    category: 'mobile',
   },
   {
     id: 'xbox',
@@ -35,7 +35,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-28',
     color: '#107C10',
-    category: 'Gaming',
+    category: 'gaming',
   },
   {
     id: 'icloud',
@@ -44,7 +44,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-12-03',
     color: '#3693F3',
-    category: 'Αποθήκευση',
+    category: 'storage',
   },
   {
     id: 'claude',
@@ -53,6 +53,6 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-12-05',
     color: '#D97757',
-    category: 'AI',
+    category: 'ai',
   },
 ];

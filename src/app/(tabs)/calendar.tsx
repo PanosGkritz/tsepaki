@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { CalendarGrid } from '../../components/CalendarGrid';
 import { SubscriptionRow } from '../../components/SubscriptionRow';
-import { colors, fonts, radius, spacing } from '../../constants/theme';
+import { fonts, radius, spacing } from '../../constants/theme';
 import { getChargedItems } from '../../db/charges';
 import { getSubscriptions } from '../../db/subscriptions';
+import type { Language, Translate } from '../../i18n';
 import {
   getMonthEnd,
   getMonthStart,
@@ -19,15 +20,19 @@ import {
 import { daysUntil, formatFullDate, formatRelativeDays, parseIsoDate, toIsoDate } from '../../lib/dates';
 import { formatEuro } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
+import { createStyles } from '../../lib/styles';
 import { getMonthLabel } from '../../lib/summary';
+import { usePreferences } from '../../providers/PreferencesProvider';
 
-const describeItem = (item: CalendarItem) =>
+const describeItem = (item: CalendarItem, t: Translate, language: Language) =>
   item.status === 'paid'
-    ? 'Πληρώθηκε'
-    : `Θα χρεωθεί ${formatRelativeDays(daysUntil(item.date))}`;
+    ? t('calendar.paid')
+    : t('calendar.willCharge', { when: formatRelativeDays(daysUntil(item.date), language) });
 
 export default function Calendar() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, language } = usePreferences();
   const todayIso = toIsoDate(new Date());
   const [monthStart, setMonthStart] = useState(() => getMonthStart(new Date()));
   const [selectedDate, setSelectedDate] = useState(todayIso);
@@ -75,29 +80,32 @@ export default function Calendar() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Ημερολόγιο</Text>
+      <Text style={styles.title}>{t('calendar.title')}</Text>
 
       <View style={styles.monthNav}>
         <Pressable
           onPress={() => changeMonth(-1)}
           accessibilityRole="button"
-          accessibilityLabel="Προηγούμενος μήνας"
+          accessibilityLabel={t('calendar.prevMonth')}
           style={styles.navButton}
         >
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
 
         <View style={styles.monthInfo}>
-          <Text style={styles.monthLabel}>{getMonthLabel(monthStart)}</Text>
+          <Text style={styles.monthLabel}>{getMonthLabel(monthStart, language)}</Text>
           <Text style={styles.monthTotals}>
-            {formatEuro(monthTotal)} · πληρώθηκαν {formatEuro(paidTotal)}
+            {t('calendar.totals', {
+              total: formatEuro(monthTotal, language),
+              paid: formatEuro(paidTotal, language),
+            })}
           </Text>
         </View>
 
         <Pressable
           onPress={() => changeMonth(1)}
           accessibilityRole="button"
-          accessibilityLabel="Επόμενος μήνας"
+          accessibilityLabel={t('calendar.nextMonth')}
           style={styles.navButton}
         >
           <Ionicons name="chevron-forward" size={20} color={colors.text} />
@@ -115,10 +123,10 @@ export default function Calendar() {
       </View>
 
       <View style={styles.daySection}>
-        <Text style={styles.dayTitle}>{formatFullDate(parseIsoDate(selectedDate))}</Text>
+        <Text style={styles.dayTitle}>{formatFullDate(parseIsoDate(selectedDate), language)}</Text>
 
         {selectedItems.length === 0 ? (
-          <Text style={styles.empty}>Καμία χρέωση αυτή τη μέρα.</Text>
+          <Text style={styles.empty}>{t('calendar.empty')}</Text>
         ) : (
           <View style={styles.list}>
             {selectedItems.map((item, index) => (
@@ -126,7 +134,7 @@ export default function Calendar() {
                 key={item.key}
                 subscription={item.subscription}
                 showDivider={index < selectedItems.length - 1}
-                subtitle={describeItem(item)}
+                subtitle={describeItem(item, t, language)}
                 onPress={() =>
                   router.push({
                     pathname: '/subscription/[id]',
@@ -142,7 +150,7 @@ export default function Calendar() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -182,4 +190,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
-});
+}));

@@ -4,16 +4,26 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ServiceCard } from '../../components/ServiceCard';
-import { colors, fonts, radius, spacing } from '../../constants/theme';
-import { SERVICE_CATEGORIES, services, type ServiceTemplate } from '../../data/services';
+import { fonts, radius, spacing } from '../../constants/theme';
+import { getCategoryLabel } from '../../data/categories';
+import {
+  SERVICE_FILTERS,
+  getServiceName,
+  services,
+  type ServiceFilter,
+  type ServiceTemplate,
+} from '../../data/services';
 import { getSubscriptions } from '../../db/subscriptions';
-
-type Category = (typeof SERVICE_CATEGORIES)[number];
+import { LOCALES } from '../../i18n';
+import { createStyles } from '../../lib/styles';
+import { usePreferences } from '../../providers/PreferencesProvider';
 
 export default function Add() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, language } = usePreferences();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category>('Όλα');
+  const [filter, setFilter] = useState<ServiceFilter>('all');
   const [addedIds, setAddedIds] = useState<string[]>([]);
 
   useFocusEffect(
@@ -24,11 +34,12 @@ export default function Add() {
     }, [db]),
   );
 
-  const normalizedQuery = query.trim().toLocaleLowerCase('el');
+  const locale = LOCALES[language];
+  const normalizedQuery = query.trim().toLocaleLowerCase(locale);
   const visibleServices = services.filter((service) => {
-    const matchesCategory = category === 'Όλα' || service.category === category;
-    const matchesQuery = service.name.toLocaleLowerCase('el').includes(normalizedQuery);
-    return matchesCategory && matchesQuery;
+    const matchesFilter = filter === 'all' || service.category === filter;
+    const name = getServiceName(service, t).toLocaleLowerCase(locale);
+    return matchesFilter && name.includes(normalizedQuery);
   });
 
   const onlineServices = visibleServices.filter((service) => !service.icon);
@@ -53,17 +64,17 @@ export default function Add() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Νέα συνδρομή</Text>
+        <Text style={styles.title}>{t('add.title')}</Text>
 
         <View style={styles.search}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Αναζήτηση, π.χ. Netflix"
+            placeholder={t('add.search')}
             placeholderTextColor={colors.textMuted}
             style={styles.searchInput}
-            accessibilityLabel="Αναζήτηση υπηρεσίας"
+            accessibilityLabel={t('add.searchLabel')}
           />
         </View>
 
@@ -72,17 +83,19 @@ export default function Add() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}
         >
-          {SERVICE_CATEGORIES.map((item) => {
-            const isActive = item === category;
+          {SERVICE_FILTERS.map((item) => {
+            const isActive = item === filter;
             return (
               <Pressable
                 key={item}
-                onPress={() => setCategory(item)}
+                onPress={() => setFilter(item)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 style={[styles.chip, isActive && styles.chipActive]}
               >
-                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item}</Text>
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {item === 'all' ? t('category.all') : getCategoryLabel(item, t)}
+                </Text>
               </Pressable>
             );
           })}
@@ -90,7 +103,7 @@ export default function Add() {
 
         {onlineServices.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Δημοφιλείς στην Ελλάδα</Text>
+            <Text style={styles.sectionTitle}>{t('add.popular')}</Text>
             {renderGrid(onlineServices)}
           </>
         )}
@@ -98,18 +111,14 @@ export default function Add() {
         {localServices.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Συνδρομές εκτός internet</Text>
-              <Text style={styles.sectionHint}>
-                Ό,τι πληρώνεις σταθερά: γυμναστήριο, μαθήματα, φροντιστήριο, ενοίκιο.
-              </Text>
+              <Text style={styles.sectionTitle}>{t('add.offline')}</Text>
+              <Text style={styles.sectionHint}>{t('add.offlineHint')}</Text>
             </View>
             {renderGrid(localServices)}
           </>
         )}
 
-        {visibleServices.length === 0 && (
-          <Text style={styles.empty}>Δεν βρέθηκε. Πρόσθεσέ το μόνος σου από κάτω.</Text>
-        )}
+        {visibleServices.length === 0 && <Text style={styles.empty}>{t('add.empty')}</Text>}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -119,14 +128,14 @@ export default function Add() {
           style={({ pressed }) => [styles.manualButton, pressed && styles.pressed]}
         >
           <Ionicons name="add" size={20} color={colors.background} />
-          <Text style={styles.manualButtonText}>Πρόσθεσε κάτι δικό σου</Text>
+          <Text style={styles.manualButtonText}>{t('add.manual')}</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -166,6 +175,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   manualButton: {
     flexDirection: 'row',
@@ -178,4 +188,4 @@ const styles = StyleSheet.create({
   },
   manualButtonText: { color: colors.background, fontSize: 15, fontFamily: fonts.semibold },
   pressed: { opacity: 0.8 },
-});
+}));

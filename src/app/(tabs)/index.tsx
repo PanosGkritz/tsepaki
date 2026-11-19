@@ -1,20 +1,24 @@
 import { Redirect, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { MonthSummaryCard } from '../../components/MonthSummaryCard';
 import { UpcomingCharges } from '../../components/UpcomingCharges';
-import { colors, fonts, spacing } from '../../constants/theme';
+import { fonts, spacing } from '../../constants/theme';
 import { getPaidBetween } from '../../db/charges';
 import { getSettings } from '../../db/settings';
 import { getSubscriptions } from '../../db/subscriptions';
 import { buildGreeting } from '../../lib/greeting';
 import { syncReminders } from '../../lib/reminders';
+import { createStyles } from '../../lib/styles';
 import { getMonthLabel, getMonthRange, getMonthSummary } from '../../lib/summary';
+import { usePreferences } from '../../providers/PreferencesProvider';
 import type { Subscription } from '../../types/subscription';
 
 export default function Home() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { t, language } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [paid, setPaid] = useState(0);
   const [userName, setUserName] = useState('');
@@ -59,12 +63,12 @@ export default function Home() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>{buildGreeting(userName)}</Text>
-        <Text style={styles.title}>Το Τσεπάκι μου</Text>
+        <Text style={styles.greeting}>{buildGreeting(userName, language)}</Text>
+        <Text style={styles.title}>{t('home.title')}</Text>
       </View>
 
       <MonthSummaryCard
-        monthLabel={getMonthLabel()}
+        monthLabel={getMonthLabel(new Date(), language)}
         total={summary.total}
         paid={summary.paid}
         subscriptionCount={summary.count}
@@ -75,7 +79,7 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -86,4 +90,4 @@ const styles = StyleSheet.create({
   header: { gap: spacing.xs },
   greeting: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular },
   title: { color: colors.text, fontSize: 30, fontFamily: fonts.semibold, letterSpacing: -0.5 },
-});
+}));

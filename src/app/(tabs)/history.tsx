@@ -2,19 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CategoryBreakdown } from '../../components/CategoryBreakdown';
 import { MonthlyBars } from '../../components/MonthlyBars';
 import { SubscriptionRow } from '../../components/SubscriptionRow';
-import { colors, fonts, radius, spacing } from '../../constants/theme';
+import { fonts, radius, spacing } from '../../constants/theme';
 import { getChargedItems } from '../../db/charges';
 import { getSubscriptions } from '../../db/subscriptions';
+import { LOCALES, type Language } from '../../i18n';
 import type { CalendarItem } from '../../lib/calendar';
 import { formatChargeDay, parseIsoDate, toIsoDate } from '../../lib/dates';
 import { formatEuro } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
 import { getCategoryBreakdown, getMonthlyTotals } from '../../lib/stats';
+import { createStyles } from '../../lib/styles';
 import { getMonthLabel } from '../../lib/summary';
+import { usePreferences } from '../../providers/PreferencesProvider';
 import type { Subscription } from '../../types/subscription';
 
 type MonthGroup = {
@@ -26,7 +29,7 @@ type MonthGroup = {
 
 const sumAmounts = (items: CalendarItem[]) => items.reduce((sum, item) => sum + item.amount, 0);
 
-const groupByMonth = (items: CalendarItem[]): MonthGroup[] => {
+const groupByMonth = (items: CalendarItem[], language: Language): MonthGroup[] => {
   const groups = new Map<string, CalendarItem[]>();
   for (const item of items) {
     const key = item.date.slice(0, 7);
@@ -37,7 +40,7 @@ const groupByMonth = (items: CalendarItem[]): MonthGroup[] => {
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([key, monthItems]) => ({
       key,
-      label: getMonthLabel(parseIsoDate(`${key}-01`)),
+      label: getMonthLabel(parseIsoDate(`${key}-01`), language),
       total: sumAmounts(monthItems),
       items: [...monthItems].sort((a, b) => b.date.localeCompare(a.date)),
     }));
@@ -48,6 +51,8 @@ const openSubscription = (id: string) =>
 
 export default function History() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, language } = usePreferences();
   const [charges, setCharges] = useState<CalendarItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [query, setQuery] = useState('');
@@ -83,14 +88,15 @@ export default function History() {
   const monthsWithCharges = new Set(chargesThisYear.map((item) => item.date.slice(0, 7))).size;
   const monthlyAverage = monthsWithCharges > 0 ? paidThisYear / monthsWithCharges : 0;
 
-  const monthlyTotals = getMonthlyTotals(charges, subscriptions);
+  const monthlyTotals = getMonthlyTotals(charges, subscriptions, 6, new Date(), language);
   const categories = getCategoryBreakdown(subscriptions);
 
-  const normalizedQuery = query.trim().toLocaleLowerCase('el');
+  const locale = LOCALES[language];
+  const normalizedQuery = query.trim().toLocaleLowerCase(locale);
   const visibleCharges = charges.filter((item) =>
-    item.subscription.name.toLocaleLowerCase('el').includes(normalizedQuery),
+    item.subscription.name.toLocaleLowerCase(locale).includes(normalizedQuery),
   );
-  const groups = groupByMonth(visibleCharges);
+  const groups = groupByMonth(visibleCharges, language);
 
   return (
     <ScrollView
@@ -98,63 +104,58 @@ export default function History() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Ιστορικό</Text>
+      <Text style={styles.title}>{t('history.title')}</Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Πλήρωσες φέτος</Text>
-        <Text style={styles.yearPaid}>{formatEuro(paidThisYear)}</Text>
+        <Text style={styles.cardLabel}>{t('history.paidThisYear')}</Text>
+        <Text style={styles.bigAmount}>{formatEuro(paidThisYear, language)}</Text>
 
         <View style={styles.stats}>
-          <Stat label="Χρεώσεις" value={String(chargesThisYear.length)} />
-          <Stat label="Μέσος όρος / μήνα" value={formatEuro(monthlyAverage)} />
+          <Stat label={t('history.charges')} value={String(chargesThisYear.length)} />
+          <Stat label={t('history.average')} value={formatEuro(monthlyAverage, language)} />
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Ανά μήνα</Text>
+      <Text style={styles.sectionTitle}>{t('history.byMonth')}</Text>
       <View style={styles.card}>
         <MonthlyBars months={monthlyTotals} />
       </View>
 
       {categories.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>Πού πάνε τα λεφτά σου</Text>
+          <Text style={styles.sectionTitle}>{t('history.categories')}</Text>
           <View style={styles.card}>
             <CategoryBreakdown items={categories} />
-            <Text style={styles.cardNote}>Μηνιαίο κόστος των ενεργών συνδρομών σου.</Text>
+            <Text style={styles.cardNote}>{t('history.categoriesNote')}</Text>
           </View>
         </>
       )}
 
-      <Text style={styles.sectionTitle}>Όλες οι χρεώσεις</Text>
+      <Text style={styles.sectionTitle}>{t('history.all')}</Text>
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Αναζήτηση, π.χ. Netflix"
+          placeholder={t('add.search')}
           placeholderTextColor={colors.textMuted}
           style={styles.searchInput}
-          accessibilityLabel="Αναζήτηση στο ιστορικό"
+          accessibilityLabel={t('history.searchLabel')}
         />
       </View>
 
-      {charges.length === 0 && (
-        <Text style={styles.empty}>
-          Δεν υπάρχουν ακόμα χρεώσεις. Καταγράφονται μόνες τους μόλις περάσει η μέρα χρέωσης, ή
-          όταν πατάς «Το πλήρωσα» στην ειδοποίηση.
-        </Text>
-      )}
+      {charges.length === 0 && <Text style={styles.empty}>{t('history.empty')}</Text>}
 
       {charges.length > 0 && groups.length === 0 && (
-        <Text style={styles.empty}>Δεν βρέθηκε χρέωση για «{query.trim()}».</Text>
+        <Text style={styles.empty}>{t('history.notFound', { query: query.trim() })}</Text>
       )}
 
       {groups.map((group) => (
         <View key={group.key} style={styles.monthSection}>
           <View style={styles.monthHeader}>
             <Text style={styles.monthLabel}>{group.label}</Text>
-            <Text style={styles.monthTotal}>{formatEuro(group.total)}</Text>
+            <Text style={styles.monthTotal}>{formatEuro(group.total, language)}</Text>
           </View>
 
           <View style={styles.list}>
@@ -163,7 +164,7 @@ export default function History() {
                 key={item.key}
                 subscription={item.subscription}
                 showDivider={index < group.items.length - 1}
-                subtitle={formatChargeDay(item.date)}
+                subtitle={formatChargeDay(item.date, language)}
                 onPress={() => openSubscription(item.subscription.id)}
               />
             ))}
@@ -176,14 +177,17 @@ export default function History() {
 
 type StatProps = { label: string; value: string };
 
-const Stat = ({ label, value }: StatProps) => (
-  <View style={styles.stat}>
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text style={styles.statValue}>{value}</Text>
-  </View>
-);
+const Stat = ({ label, value }: StatProps) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+};
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -204,9 +208,9 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 2,
   },
-  cardLabel: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.medium },
+  cardLabel: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.medium, lineHeight: 20 },
   cardNote: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, marginTop: 14 },
-  yearPaid: {
+  bigAmount: {
     color: colors.text,
     fontSize: 34,
     fontFamily: fonts.semibold,
@@ -254,4 +258,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
   },
-});
+}));

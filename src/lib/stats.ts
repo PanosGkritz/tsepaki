@@ -1,3 +1,4 @@
+import type { Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
 import {
   getMonthEnd,
@@ -10,18 +11,21 @@ import { monthlyCost } from './costs';
 import { toIsoDate } from './dates';
 import { getMonthLabel } from './summary';
 
-const MONTH_SHORT = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιούν', 'Ιούλ', 'Αύγ', 'Σεπ', 'Οκτ', 'Νοέ', 'Δεκ'];
+const MONTH_SHORT: Record<Language, string[]> = {
+  el: ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιούν', 'Ιούλ', 'Αύγ', 'Σεπ', 'Οκτ', 'Νοέ', 'Δεκ'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Streaming: '#E5484D',
-  Μουσική: '#30A46C',
-  Gaming: '#3E63DD',
-  AI: '#D97757',
-  Αποθήκευση: '#12A594',
-  Κινητό: '#D6409F',
-  TV: '#F5A35C',
-  Δραστηριότητες: '#E8590C',
-  Άλλο: '#8B8D98',
+  streaming: '#E5484D',
+  music: '#30A46C',
+  gaming: '#3E63DD',
+  ai: '#D97757',
+  storage: '#12A594',
+  mobile: '#D6409F',
+  tv: '#F5A35C',
+  activities: '#E8590C',
+  other: '#8B8D98',
 };
 
 const FALLBACK_COLOR = '#8B8D98';
@@ -43,7 +47,8 @@ export type CategoryShare = {
 
 const sumAmounts = (items: CalendarItem[]) => items.reduce((sum, item) => sum + item.amount, 0);
 
-export const getMonthName = (date: Date) => getMonthLabel(date).split(' ')[0];
+export const getMonthName = (date: Date, language: Language = 'el') =>
+  getMonthLabel(date, language).split(' ')[0];
 
 export const toAccusative = (monthName: string) => monthName.slice(0, -1);
 
@@ -52,6 +57,7 @@ export const getMonthlyTotals = (
   subscriptions: Subscription[],
   count = 6,
   today = new Date(),
+  language: Language = 'el',
 ): MonthTotal[] => {
   const currentStart = getMonthStart(today);
   const upcomingThisMonth = getUpcomingItems(
@@ -67,7 +73,13 @@ export const getMonthlyTotals = (
     const paid = sumAmounts(charges.filter((item) => item.date.startsWith(key)));
     const upcoming = isCurrent ? sumAmounts(upcomingThisMonth) : 0;
 
-    return { key, date, shortLabel: MONTH_SHORT[date.getMonth()], total: paid + upcoming, isCurrent };
+    return {
+      key,
+      date,
+      shortLabel: MONTH_SHORT[language][date.getMonth()],
+      total: paid + upcoming,
+      isCurrent,
+    };
   });
 };
 

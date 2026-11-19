@@ -1,4 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import type { ThemeMode } from '../constants/theme';
+import type { Language } from '../i18n';
 
 export type AppSettings = {
   userName: string;
@@ -6,6 +8,8 @@ export type AppSettings = {
   reminderDays: number[];
   reminderHour: number;
   yearlyReminder: boolean;
+  themeMode: ThemeMode;
+  language: Language | null;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reminderDays: [3, 2, 1, 0],
   reminderHour: 10,
   yearlyReminder: true,
+  themeMode: 'system',
+  language: null,
 };
 
 const parseJson = (text: string): unknown => {
@@ -27,6 +33,11 @@ const parseJson = (text: string): unknown => {
 const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'number');
 
+const isThemeMode = (value: unknown): value is ThemeMode =>
+  value === 'system' || value === 'dark' || value === 'light';
+
+const isLanguage = (value: unknown): value is Language => value === 'el' || value === 'en';
+
 const applyStoredValue = (settings: AppSettings, key: string, value: unknown): AppSettings => {
   switch (key) {
     case 'userName':
@@ -39,6 +50,10 @@ const applyStoredValue = (settings: AppSettings, key: string, value: unknown): A
       return typeof value === 'number' ? { ...settings, reminderHour: value } : settings;
     case 'yearlyReminder':
       return typeof value === 'boolean' ? { ...settings, yearlyReminder: value } : settings;
+    case 'themeMode':
+      return isThemeMode(value) ? { ...settings, themeMode: value } : settings;
+    case 'language':
+      return isLanguage(value) ? { ...settings, language: value } : settings;
     default:
       return settings;
   }

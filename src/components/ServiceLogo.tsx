@@ -3,10 +3,11 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, fonts } from '../constants/theme';
+import { fonts } from '../constants/theme';
 import { brandIcons } from '../data/brandIcons';
 import { findService } from '../data/services';
 import { getLogoUrl } from '../lib/logos';
+import { useTheme } from '../providers/PreferencesProvider';
 
 type ServiceLogoProps = {
   id: string;
@@ -19,6 +20,7 @@ type ServiceLogoProps = {
 const toHex = (value: string) => (value.startsWith('#') ? value : `#${value}`);
 
 export const ServiceLogo = ({ id, name, fallbackColor, domain, size = 42 }: ServiceLogoProps) => {
+  const colors = useTheme();
   const [remoteFailed, setRemoteFailed] = useState(false);
   const service = findService(id);
   const boxStyle = { width: size, height: size, borderRadius: size * 0.32 };

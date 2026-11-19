@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
-import { colors, fonts, radius, spacing } from '../../constants/theme';
+import { fonts, radius, spacing } from '../../constants/theme';
 import { findService } from '../../data/services';
 import { getSubscriptionTotals } from '../../db/charges';
 import {
@@ -12,25 +12,33 @@ import {
   getSubscription,
   updateSubscription,
 } from '../../db/subscriptions';
+import type { Language, Translate } from '../../i18n';
 import { parseIsoDate } from '../../lib/dates';
 import { formatEuro } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
 import { getMonthName, toAccusative } from '../../lib/stats';
+import { createStyles } from '../../lib/styles';
+import { usePreferences } from '../../providers/PreferencesProvider';
 import type { NewSubscription, Subscription } from '../../types/subscription';
 
 type Totals = Awaited<ReturnType<typeof getSubscriptionTotals>>;
 
-const describeTotals = (totals: Totals) => {
-  if (totals.count === 0 || !totals.firstDate) return 'Δεν έχει χρεωθεί ακόμα μέσα από το Τσεπάκι.';
+const describeTotals = (totals: Totals, t: Translate, language: Language) => {
+  if (totals.count === 0 || !totals.firstDate) return t('edit.totalsNone');
 
   const firstDate = parseIsoDate(totals.firstDate);
-  const since = `${toAccusative(getMonthName(firstDate))} ${firstDate.getFullYear()}`;
-  const times = totals.count === 1 ? '1 χρέωση' : `${totals.count} χρεώσεις`;
-  return `σε ${times} από τον ${since}`;
+  const monthName = getMonthName(firstDate, language);
+  const since = `${language === 'el' ? toAccusative(monthName) : monthName} ${firstDate.getFullYear()}`;
+
+  return totals.count === 1
+    ? t('edit.totalsOne', { since })
+    : t('edit.totalsMany', { count: totals.count, since });
 };
 
 export default function EditSubscription() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { t, language } = usePreferences();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -55,42 +63,34 @@ export default function EditSubscription() {
   };
 
   const confirmCancel = () =>
-    Alert.alert(
-      'Την ακύρωσες;',
-      'Σταματάω τις υπενθυμίσεις για αυτή τη συνδρομή. Οι χρεώσεις που έχουν γίνει μένουν στο ιστορικό.',
-      [
-        { text: 'Όχι', style: 'cancel' },
-        {
-          text: 'Ναι, την ακύρωσα',
-          onPress: async () => {
-            await cancelSubscription(db, subscription.id);
-            await finish();
-          },
+    Alert.alert(t('edit.cancelTitle'), t('edit.cancelMessage'), [
+      { text: t('edit.cancelNo'), style: 'cancel' },
+      {
+        text: t('edit.cancelYes'),
+        onPress: async () => {
+          await cancelSubscription(db, subscription.id);
+          await finish();
         },
-      ],
-    );
+      },
+    ]);
 
   const confirmDelete = () =>
-    Alert.alert(
-      'Διαγραφή συνδρομής',
-      'Θα σβηστεί μαζί με όλες τις χρεώσεις της. Είναι για συνδρομές που πρόσθεσες κατά λάθος.',
-      [
-        { text: 'Άκυρο', style: 'cancel' },
-        {
-          text: 'Διαγραφή',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteSubscription(db, subscription.id);
-            await finish();
-          },
+    Alert.alert(t('edit.deleteTitle'), t('edit.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('edit.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          await deleteSubscription(db, subscription.id);
+          await finish();
         },
-      ],
-    );
+      },
+    ]);
 
   return (
     <SubscriptionForm
-      title="Επεξεργασία"
-      submitLabel="Αποθήκευση αλλαγών"
+      title={t('form.titleEdit')}
+      submitLabel={t('form.submitEdit')}
       service={service}
       initial={subscription}
       onSubmit={handleSubmit}
@@ -98,9 +98,9 @@ export default function EditSubscription() {
         <View style={styles.footer}>
           {totals && (
             <View style={styles.totalsCard}>
-              <Text style={styles.totalsLabel}>Έχεις δώσει συνολικά</Text>
-              <Text style={styles.totalsAmount}>{formatEuro(totals.total)}</Text>
-              <Text style={styles.totalsCaption}>{describeTotals(totals)}</Text>
+              <Text style={styles.totalsLabel}>{t('edit.totalsLabel')}</Text>
+              <Text style={styles.totalsAmount}>{formatEuro(totals.total, language)}</Text>
+              <Text style={styles.totalsCaption}>{describeTotals(totals, t, language)}</Text>
             </View>
           )}
 
@@ -110,7 +110,7 @@ export default function EditSubscription() {
               accessibilityRole="button"
               style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
             >
-              <Text style={styles.actionText}>Την ακύρωσα</Text>
+              <Text style={styles.actionText}>{t('edit.cancelled')}</Text>
             </Pressable>
 
             <Pressable
@@ -118,7 +118,7 @@ export default function EditSubscription() {
               accessibilityRole="button"
               style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
             >
-              <Text style={styles.deleteText}>Διαγραφή</Text>
+              <Text style={styles.deleteText}>{t('edit.delete')}</Text>
             </Pressable>
           </View>
         </View>
@@ -127,7 +127,7 @@ export default function EditSubscription() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   footer: { gap: spacing.md },
   totalsCard: {
@@ -158,4 +158,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   actionText: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   deleteText: { color: colors.warning, fontSize: 15, fontFamily: fonts.medium },
-});
+}));

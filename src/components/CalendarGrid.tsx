@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius } from '../constants/theme';
+import { Pressable, Text, View } from 'react-native';
+import { fonts, radius } from '../constants/theme';
 import { WEEKDAY_SHORT, buildMonthCells, type CalendarItem } from '../lib/calendar';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 import { ServiceLogo } from './ServiceLogo';
 
 const MAX_LOGOS = 2;
@@ -20,12 +22,14 @@ export const CalendarGrid = ({
   todayIso,
   onSelect,
 }: CalendarGridProps) => {
+  const styles = useStyles();
+  const { language } = usePreferences();
   const cells = buildMonthCells(monthStart);
 
   return (
     <View>
       <View style={styles.weekRow}>
-        {WEEKDAY_SHORT.map((label, index) => (
+        {WEEKDAY_SHORT[language].map((label, index) => (
           <Text key={index} style={styles.weekday}>
             {label}
           </Text>
@@ -61,6 +65,8 @@ type DayCellProps = {
 };
 
 const DayCell = ({ iso, items, isSelected, isToday, onSelect }: DayCellProps) => {
+  const styles = useStyles();
+  const { t } = usePreferences();
   const day = Number(iso.slice(8));
   const extra = items.length - MAX_LOGOS;
 
@@ -68,7 +74,7 @@ const DayCell = ({ iso, items, isSelected, isToday, onSelect }: DayCellProps) =>
     <Pressable
       onPress={() => onSelect(iso)}
       accessibilityRole="button"
-      accessibilityLabel={`${day}, ${items.length} χρεώσεις`}
+      accessibilityLabel={t('calendar.dayLabel', { day, count: items.length })}
       accessibilityState={{ selected: isSelected }}
       style={styles.cell}
     >
@@ -93,7 +99,7 @@ const DayCell = ({ iso, items, isSelected, isToday, onSelect }: DayCellProps) =>
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   weekRow: { flexDirection: 'row', marginBottom: 6 },
   weekday: {
     width: '14.2857%',
@@ -121,4 +127,4 @@ const styles = StyleSheet.create({
   dayToday: { color: colors.accentBright, fontFamily: fonts.semibold },
   logos: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   more: { color: colors.textMuted, fontSize: 10, fontFamily: fonts.medium },
-});
+}));

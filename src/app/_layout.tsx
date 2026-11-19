@@ -10,9 +10,9 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ReminderSync } from '../components/ReminderSync';
-import { colors } from '../constants/theme';
 import { migrateDbIfNeeded } from '../db/migrate';
 import { setupNotifications } from '../lib/notifications';
+import { PreferencesProvider, usePreferences } from '../providers/PreferencesProvider';
 
 SplashScreen.preventAutoHideAsync();
 setupNotifications();
@@ -32,8 +32,20 @@ export default function RootLayout() {
 
   return (
     <SQLiteProvider databaseName="tsepaki.db" onInit={migrateDbIfNeeded}>
-      <ReminderSync />
-      <StatusBar style="light" />
+      <PreferencesProvider>
+        <ReminderSync />
+        <AppStack />
+      </PreferencesProvider>
+    </SQLiteProvider>
+  );
+}
+
+const AppStack = () => {
+  const { colors, isDark } = usePreferences();
+
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -46,6 +58,6 @@ export default function RootLayout() {
         <Stack.Screen name="subscription/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="subscription/[id]" options={{ presentation: 'modal' }} />
       </Stack>
-    </SQLiteProvider>
+    </>
   );
-}
+};

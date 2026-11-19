@@ -1,6 +1,15 @@
+import type { Language } from '../i18n';
 import type { BillingCycle } from '../types/subscription';
 
-const WEEKDAYS = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
+const WEEKDAYS: Record<Language, string[]> = {
+  el: ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+};
+
+const RELATIVE: Record<Language, { today: string; tomorrow: string; inDays: string }> = {
+  el: { today: 'σήμερα', tomorrow: 'αύριο', inDays: 'σε {days} μέρες' },
+  en: { today: 'today', tomorrow: 'tomorrow', inDays: 'in {days} days' },
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -29,16 +38,17 @@ export const addCycle = (iso: string, cycle: BillingCycle) => {
   return toIsoDate(target);
 };
 
-export const formatChargeDay = (iso: string) => {
+export const formatChargeDay = (iso: string, language: Language = 'el') => {
   const date = parseIsoDate(iso);
-  return `${WEEKDAYS[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`;
+  return `${WEEKDAYS[language][date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`;
 };
 
-export const formatFullDate = (date: Date) =>
-  `${WEEKDAYS[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+export const formatFullDate = (date: Date, language: Language = 'el') =>
+  `${WEEKDAYS[language][date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 
-export const formatRelativeDays = (days: number) => {
-  if (days === 0) return 'σήμερα';
-  if (days === 1) return 'αύριο';
-  return `σε ${days} μέρες`;
+export const formatRelativeDays = (days: number, language: Language = 'el') => {
+  const words = RELATIVE[language];
+  if (days === 0) return words.today;
+  if (days === 1) return words.tomorrow;
+  return words.inDays.replace('{days}', String(days));
 };

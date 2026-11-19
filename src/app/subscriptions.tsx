@@ -2,22 +2,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SubscriptionRow } from '../components/SubscriptionRow';
-import { colors, fonts, radius, spacing } from '../constants/theme';
+import { fonts, radius, spacing } from '../constants/theme';
 import { getSubscriptions } from '../db/subscriptions';
+import type { StringKey } from '../i18n';
 import { getCostTotals } from '../lib/costs';
 import { formatChargeDay } from '../lib/dates';
 import { formatEuro } from '../lib/format';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 import type { BillingCycle, Subscription } from '../types/subscription';
 
-const CYCLE_LABEL: Record<BillingCycle, string> = {
-  monthly: 'Μηνιαία',
-  yearly: 'Ετήσια',
+const CYCLE_KEYS: Record<BillingCycle, StringKey> = {
+  monthly: 'form.monthly',
+  yearly: 'form.yearly',
 };
 
 export default function Subscriptions() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, language } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   useFocusEffect(
@@ -33,21 +38,21 @@ export default function Subscriptions() {
       <Pressable
         onPress={() => router.back()}
         accessibilityRole="button"
-        accessibilityLabel="Πίσω"
+        accessibilityLabel={t('list.back')}
         style={styles.backButton}
       >
         <Ionicons name="chevron-back" size={22} color={colors.text} />
       </Pressable>
 
-      <Text style={styles.title}>Οι συνδρομές μου</Text>
+      <Text style={styles.title}>{t('list.title')}</Text>
 
       <View style={styles.totals}>
-        <Total label="Μέσο κόστος / μήνα" value={formatEuro(totals.monthly)} />
-        <Total label="Κόστος / χρόνο" value={formatEuro(totals.yearly)} />
+        <Total label={t('list.monthly')} value={formatEuro(totals.monthly, language)} />
+        <Total label={t('list.yearly')} value={formatEuro(totals.yearly, language)} />
       </View>
 
       {subscriptions.length === 0 ? (
-        <Text style={styles.empty}>Δεν έχεις ακόμα συνδρομές. Πάτα το + για να προσθέσεις.</Text>
+        <Text style={styles.empty}>{t('upcoming.empty')}</Text>
       ) : (
         <View style={styles.list}>
           {subscriptions.map((subscription, index) => (
@@ -58,27 +63,33 @@ export default function Subscriptions() {
               onPress={() =>
                 router.push({ pathname: '/subscription/[id]', params: { id: subscription.id } })
               }
-              subtitle={`${CYCLE_LABEL[subscription.cycle]} · επόμενη ${formatChargeDay(subscription.nextChargeDate)}`}
+              subtitle={t('list.subtitle', {
+                cycle: t(CYCLE_KEYS[subscription.cycle]),
+                day: formatChargeDay(subscription.nextChargeDate, language),
+              })}
             />
           ))}
         </View>
       )}
 
-      <Text style={styles.note}>Στο μηνιαίο κόστος οι ετήσιες μετράνε με το 1/12 της τιμής τους.</Text>
+      <Text style={styles.note}>{t('list.note')}</Text>
     </ScrollView>
   );
 }
 
 type TotalProps = { label: string; value: string };
 
-const Total = ({ label, value }: TotalProps) => (
-  <View style={styles.total}>
-    <Text style={styles.totalLabel}>{label}</Text>
-    <Text style={styles.totalValue}>{value}</Text>
-  </View>
-);
+const Total = ({ label, value }: TotalProps) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.total}>
+      <Text style={styles.totalLabel}>{label}</Text>
+      <Text style={styles.totalValue}>{value}</Text>
+    </View>
+  );
+};
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -117,4 +128,4 @@ const styles = StyleSheet.create({
   },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   note: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
-});
+}));

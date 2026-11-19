@@ -5,6 +5,7 @@ import { findService } from '../../data/services';
 import { insertSubscription } from '../../db/subscriptions';
 import { requestPermission } from '../../lib/notifications';
 import { syncReminders } from '../../lib/reminders';
+import { usePreferences } from '../../providers/PreferencesProvider';
 import type { NewSubscription as NewSubscriptionValues } from '../../types/subscription';
 
 const enableReminders = async () => {
@@ -17,6 +18,7 @@ const enableReminders = async () => {
 
 export default function NewSubscription() {
   const db = useSQLiteContext();
+  const { t } = usePreferences();
   const { serviceId } = useLocalSearchParams<{ serviceId?: string }>();
   const service = serviceId ? findService(serviceId) : undefined;
 
@@ -29,8 +31,8 @@ export default function NewSubscription() {
 
   return (
     <SubscriptionForm
-      title={service ? 'Νέα συνδρομή' : 'Χειροκίνητη προσθήκη'}
-      submitLabel="Πρόσθεσε στο Τσεπάκι"
+      title={service ? t('form.titleNew') : t('form.titleManual')}
+      submitLabel={t('form.submitNew')}
       service={service}
       onSubmit={handleSubmit}
     />

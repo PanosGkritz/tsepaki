@@ -3,27 +3,28 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { colors, fonts, radius, spacing } from '../constants/theme';
-import { SERVICE_CATEGORIES, type ServiceTemplate } from '../data/services';
+import { fonts, radius, spacing } from '../constants/theme';
+import { CATEGORIES, getCategoryLabel, isCategory, type Category } from '../data/categories';
+import { getServiceName, type ServiceTemplate } from '../data/services';
+import { LOCALES, type Language, type StringKey } from '../i18n';
 import { pickColor } from '../lib/colors';
 import { formatFullDate, parseIsoDate, toIsoDate } from '../lib/dates';
+import { createStyles } from '../lib/styles';
+import { usePreferences } from '../providers/PreferencesProvider';
 import type { BillingCycle, NewSubscription, Subscription } from '../types/subscription';
 import { ServiceLogo } from './ServiceLogo';
 
-const FORM_CATEGORIES = [...SERVICE_CATEGORIES.filter((item) => item !== 'Όλα'), 'Άλλο'];
-
-const CYCLES: { value: BillingCycle; label: string }[] = [
-  { value: 'monthly', label: 'Μηνιαία' },
-  { value: 'yearly', label: 'Ετήσια' },
+const CYCLES: { value: BillingCycle; key: StringKey }[] = [
+  { value: 'monthly', key: 'form.monthly' },
+  { value: 'yearly', key: 'form.yearly' },
 ];
 
 const parsePrice = (text: string) => {
@@ -31,7 +32,13 @@ const parsePrice = (text: string) => {
   return Number.isFinite(value) && value > 0 ? value : null;
 };
 
-const formatPriceInput = (price: number) => String(price).replace('.', ',');
+const formatPriceInput = (price: number, language: Language) =>
+  language === 'el' ? String(price).replace('.', ',') : String(price);
+
+const initialCategory = (initial?: Subscription, service?: ServiceTemplate): Category => {
+  if (initial && isCategory(initial.category)) return initial.category;
+  return service?.category ?? 'other';
+};
 
 type SubscriptionFormProps = {
   title: string;
@@ -50,15 +57,21 @@ export const SubscriptionForm = ({
   onSubmit,
   footer,
 }: SubscriptionFormProps) => {
-  const [name, setName] = useState(initial?.name ?? service?.name ?? '');
-  const [priceText, setPriceText] = useState(initial ? formatPriceInput(initial.price) : '');
+  const styles = useStyles();
+  const { colors, isDark, t, language } = usePreferences();
+  const [name, setName] = useState(
+    initial?.name ?? (service ? getServiceName(service, t) : ''),
+  );
+  const [priceText, setPriceText] = useState(
+    initial ? formatPriceInput(initial.price, language) : '',
+  );
   const [cycle, setCycle] = useState<BillingCycle>(initial?.cycle ?? 'monthly');
   const [nextDate, setNextDate] = useState(
     initial ? parseIsoDate(initial.nextChargeDate) : new Date(),
   );
-  const [category, setCategory] = useState(initial?.category ?? service?.category ?? 'Άλλο');
+  const [category, setCategory] = useState<Category>(initialCategory(initial, service));
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<StringKey | null>(null);
   const [saving, setSaving] = useState(false);
 
   const price = parsePrice(priceText);
@@ -72,11 +85,11 @@ export const SubscriptionForm = ({
 
   const handleSave = async () => {
     if (!trimmedName) {
-      setError('Βάλε ένα όνομα για τη συνδρομή.');
+      setError('form.errorName');
       return;
     }
     if (price === null) {
-      setError('Βάλε μια σωστή τιμή, π.χ. 9,99.');
+      setError('form.errorPrice');
       return;
     }
 
@@ -95,7 +108,7 @@ export const SubscriptionForm = ({
         domain: service?.domain ?? initial?.domain,
       });
     } catch {
-      setError('Κάτι πήγε στραβά στην αποθήκευση. Δοκίμασε ξανά.');
+      setError('form.errorSave');
       setSaving(false);
     }
   };
@@ -111,7 +124,7 @@ export const SubscriptionForm = ({
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
-            accessibilityLabel="Κλείσιμο"
+            accessibilityLabel={t('form.close')}
             style={styles.closeButton}
           >
             <Ionicons name="close" size={22} color={colors.text} />
@@ -120,44 +133,44 @@ export const SubscriptionForm = ({
 
         <View style={styles.hero}>
           <ServiceLogo
-            id={service?.id ?? initial?.id ?? 'custom'}
+            id={service?.id ?? initial?.serviceId ?? initial?.id ?? 'custom'}
             name={trimmedName || '?'}
             fallbackColor={color}
             domain={service ? undefined : initial?.domain}
             size={64}
           />
           <Text style={styles.heroName} numberOfLines={1}>
-            {trimmedName || 'Νέα συνδρομή'}
+            {trimmedName || t('form.heroPlaceholder')}
           </Text>
         </View>
 
-        <Field label="Όνομα">
+        <Field label={t('form.name')}>
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="π.χ. Netflix"
+            placeholder={t('form.namePlaceholder')}
             placeholderTextColor={colors.textMuted}
             style={styles.input}
-            accessibilityLabel="Όνομα συνδρομής"
+            accessibilityLabel={t('form.nameLabel')}
           />
         </Field>
 
-        <Field label="Τιμή">
+        <Field label={t('form.price')}>
           <View style={styles.priceRow}>
             <TextInput
               value={priceText}
               onChangeText={setPriceText}
-              placeholder="0,00"
+              placeholder={language === 'el' ? '0,00' : '0.00'}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               style={[styles.input, styles.priceInput]}
-              accessibilityLabel="Τιμή σε ευρώ"
+              accessibilityLabel={t('form.priceLabel')}
             />
             <Text style={styles.currency}>€</Text>
           </View>
         </Field>
 
-        <Field label="Συχνότητα">
+        <Field label={t('form.cycle')}>
           <View style={styles.segment}>
             {CYCLES.map((item) => {
               const isActive = item.value === cycle;
@@ -170,7 +183,7 @@ export const SubscriptionForm = ({
                   style={[styles.segmentItem, isActive && styles.segmentItemActive]}
                 >
                   <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                    {item.label}
+                    {t(item.key)}
                   </Text>
                 </Pressable>
               );
@@ -178,16 +191,16 @@ export const SubscriptionForm = ({
           </View>
         </Field>
 
-        <Field label="Επόμενη χρέωση">
+        <Field label={t('form.nextCharge')}>
           {Platform.OS === 'ios' ? (
             <View style={styles.iosDateRow}>
-              <Text style={styles.dateText}>{formatFullDate(nextDate)}</Text>
+              <Text style={styles.dateText}>{formatFullDate(nextDate, language)}</Text>
               <DateTimePicker
                 value={nextDate}
                 mode="date"
                 display="compact"
-                locale="el-GR"
-                themeVariant="dark"
+                locale={LOCALES[language]}
+                themeVariant={isDark ? 'dark' : 'light'}
                 accentColor={colors.accentBright}
                 onChange={onDateChange}
               />
@@ -198,7 +211,7 @@ export const SubscriptionForm = ({
               accessibilityRole="button"
               style={styles.input}
             >
-              <Text style={styles.dateText}>{formatFullDate(nextDate)}</Text>
+              <Text style={styles.dateText}>{formatFullDate(nextDate, language)}</Text>
             </Pressable>
           )}
           {showAndroidPicker && (
@@ -206,9 +219,9 @@ export const SubscriptionForm = ({
           )}
         </Field>
 
-        <Field label="Κατηγορία">
+        <Field label={t('form.category')}>
           <View style={styles.chips}>
-            {FORM_CATEGORIES.map((item) => {
+            {CATEGORIES.map((item) => {
               const isActive = item === category;
               return (
                 <Pressable
@@ -218,14 +231,16 @@ export const SubscriptionForm = ({
                   accessibilityState={{ selected: isActive }}
                   style={[styles.chip, isActive && styles.chipActive]}
                 >
-                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item}</Text>
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                    {getCategoryLabel(item, t)}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
         </Field>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error}>{t(error)}</Text>}
 
         <Pressable
           onPress={handleSave}
@@ -236,7 +251,7 @@ export const SubscriptionForm = ({
             (pressed || saving) && styles.saveButtonPressed,
           ]}
         >
-          <Text style={styles.saveButtonText}>{saving ? 'Αποθήκευση…' : submitLabel}</Text>
+          <Text style={styles.saveButtonText}>{saving ? t('form.saving') : submitLabel}</Text>
         </Pressable>
 
         {footer}
@@ -247,14 +262,17 @@ export const SubscriptionForm = ({
 
 type FieldProps = { label: string; children: React.ReactNode };
 
-const Field = ({ label, children }: FieldProps) => (
-  <View style={styles.field}>
-    <Text style={styles.label}>{label}</Text>
-    {children}
-  </View>
-);
+const Field = ({ label, children }: FieldProps) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+};
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2, gap: spacing.lg },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -332,4 +350,4 @@ const styles = StyleSheet.create({
   },
   saveButtonPressed: { opacity: 0.8 },
   saveButtonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
-});
+}));

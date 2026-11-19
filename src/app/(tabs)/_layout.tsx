@@ -1,77 +1,74 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { type ColorValue, StyleSheet, View } from 'react-native';
-import { colors, fonts } from '../../constants/theme';
+import { StyleSheet, View, type ColorValue } from 'react-native';
+import { fonts } from '../../constants/theme';
+import { usePreferences } from '../../providers/PreferencesProvider';
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
-type TabIconProps = { color: ColorValue; size: number };
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const tabIcon =
   (name: IconName) =>
-  ({ color, size }: TabIconProps) => (
+  ({ color, size }: { color: ColorValue; size: number }) => (
     <Ionicons name={name} size={size} color={typeof color === 'string' ? color : undefined} />
   );
 
-const AddTabIcon = () => (
-  <View style={styles.addButton}>
-    <Ionicons name="add" size={28} color={colors.onAccent} />
-  </View>
-);
+export default function TabLayout() {
+  const { colors, t } = usePreferences();
 
-export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accentBright,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarLabelStyle: { fontFamily: fonts.medium, fontSize: 11 },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 88,
+          paddingTop: 8,
+        },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Αρχική', tabBarIcon: tabIcon('home-outline') }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home-outline') }}
+      />
       <Tabs.Screen
         name="calendar"
-        options={{ title: 'Ημερολόγιο', tabBarIcon: tabIcon('calendar-outline') }}
+        options={{ title: t('tabs.calendar'), tabBarIcon: tabIcon('calendar-outline') }}
       />
       <Tabs.Screen
         name="add"
         options={{
-          title: 'Προσθήκη',
+          title: t('tabs.add'),
           tabBarLabel: () => null,
-          tabBarIcon: AddTabIcon,
-          tabBarAccessibilityLabel: 'Προσθήκη συνδρομής',
+          tabBarAccessibilityLabel: t('tabs.add'),
+          tabBarIcon: () => (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: colors.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="add" size={28} color={colors.onAccent} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Ιστορικό', tabBarIcon: tabIcon('time-outline') }}
+        options={{ title: t('tabs.history'), tabBarIcon: tabIcon('time-outline') }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Ρυθμίσεις', tabBarIcon: tabIcon('settings-outline') }}
+        options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('settings-outline') }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    height: 88,
-    paddingTop: 8,
-  },
-  tabLabel: { fontFamily: fonts.medium, fontSize: 11 },
-  addButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-});

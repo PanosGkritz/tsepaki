@@ -1,26 +1,37 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts } from '../constants/theme';
+import { Pressable, Text, View } from 'react-native';
+import { fonts } from '../constants/theme';
+import type { Language, Translate } from '../i18n';
 import { formatEuro } from '../lib/format';
 import { getMonthName, toAccusative, type MonthTotal } from '../lib/stats';
+import { createStyles } from '../lib/styles';
 import { getMonthLabel } from '../lib/summary';
+import { usePreferences } from '../providers/PreferencesProvider';
 
 const BAR_MAX_HEIGHT = 110;
 
-const describeChange = (current: MonthTotal, previous?: MonthTotal) => {
+const describeChange = (
+  current: MonthTotal,
+  previous: MonthTotal | undefined,
+  t: Translate,
+  language: Language,
+) => {
   if (!previous || previous.total === 0) return null;
 
   const diff = current.total - previous.total;
-  const monthName = toAccusative(getMonthName(previous.date));
+  const name = getMonthName(previous.date, language);
+  const month = language === 'el' ? toAccusative(name) : name;
 
-  if (Math.abs(diff) < 0.005) return `Ίδιο με τον ${monthName}`;
+  if (Math.abs(diff) < 0.005) return t('bars.same', { month });
   const sign = diff > 0 ? '+' : '−';
-  return `${sign}${formatEuro(Math.abs(diff))} σε σχέση με τον ${monthName}`;
+  return t('bars.change', { change: `${sign}${formatEuro(Math.abs(diff), language)}`, month });
 };
 
 type MonthlyBarsProps = { months: MonthTotal[] };
 
 export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
+  const styles = useStyles();
+  const { t, language } = usePreferences();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const foundIndex = months.findIndex((month) => month.key === selectedKey);
@@ -29,16 +40,16 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
   if (!selected) return null;
 
   const maxTotal = Math.max(0, ...months.map((month) => month.total));
-  const change = describeChange(selected, months[selectedIndex - 1]);
+  const change = describeChange(selected, months[selectedIndex - 1], t, language);
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <Text style={styles.label}>
-          {getMonthLabel(selected.date)}
-          {selected.isCurrent ? ' · μαζί με όσα απομένουν' : ''}
+          {getMonthLabel(selected.date, language)}
+          {selected.isCurrent ? t('bars.withRemaining') : ''}
         </Text>
-        <Text style={styles.total}>{formatEuro(selected.total)}</Text>
+        <Text style={styles.total}>{formatEuro(selected.total, language)}</Text>
         {change && <Text style={styles.change}>{change}</Text>}
       </View>
 
@@ -55,7 +66,7 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
               key={month.key}
               onPress={() => setSelectedKey(month.key)}
               accessibilityRole="button"
-              accessibilityLabel={`${getMonthLabel(month.date)}: ${formatEuro(month.total)}`}
+              accessibilityLabel={`${getMonthLabel(month.date, language)}: ${formatEuro(month.total, language)}`}
               accessibilityState={{ selected: isSelected }}
               style={styles.column}
             >
@@ -73,7 +84,7 @@ export const MonthlyBars = ({ months }: MonthlyBarsProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   wrapper: { gap: 18 },
   header: { gap: 2 },
   label: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.medium },
@@ -92,4 +103,4 @@ const styles = StyleSheet.create({
   barSelected: { backgroundColor: colors.accentBright },
   barLabel: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
   barLabelSelected: { color: colors.text, fontFamily: fonts.medium },
-});
+}));

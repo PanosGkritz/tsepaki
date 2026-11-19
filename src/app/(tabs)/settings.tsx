@@ -15,10 +15,11 @@ import {
 } from 'react-native';
 import { AppLogo } from '../../components/AppLogo';
 import { FEEDBACK_EMAIL, PLAY_STORE_URL, PRIVACY_POLICY_URL } from '../../constants/app';
-import { colors, fonts, radius, spacing } from '../../constants/theme';
+import { fonts, radius, spacing, type ThemeMode } from '../../constants/theme';
 import { deleteAllData } from '../../db/maintenance';
 import { DEFAULT_SETTINGS, getSettings, saveSetting, type AppSettings } from '../../db/settings';
 import { getSubscriptions } from '../../db/subscriptions';
+import type { Language, StringKey } from '../../i18n';
 import { formatChargeDay, toIsoDate } from '../../lib/dates';
 import {
   getPermissionState,
@@ -35,26 +36,48 @@ import {
   formatHour,
   syncReminders,
 } from '../../lib/reminders';
+import { createStyles } from '../../lib/styles';
+import { usePreferences } from '../../providers/PreferencesProvider';
 
-const STATUS_LABEL: Record<PermissionState, string> = {
-  granted: 'Ενεργές',
-  denied: 'Απενεργοποιημένες',
-  undetermined: 'Δεν έχουν ρυθμιστεί',
+const STATUS_KEYS: Record<PermissionState, StringKey> = {
+  granted: 'settings.status.granted',
+  denied: 'settings.status.denied',
+  undetermined: 'settings.status.undetermined',
 };
+
+const DAY_KEYS: Record<number, StringKey> = {
+  3: 'settings.day.3',
+  2: 'settings.day.2',
+  1: 'settings.day.1',
+  0: 'settings.day.0',
+};
+
+const THEME_OPTIONS: { value: ThemeMode; key: StringKey }[] = [
+  { value: 'system', key: 'settings.theme.system' },
+  { value: 'dark', key: 'settings.theme.dark' },
+  { value: 'light', key: 'settings.theme.light' },
+];
+
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
+  { value: 'el', label: 'Ελληνικά' },
+  { value: 'en', label: 'English' },
+];
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
-const formatReminder = (reminder: Reminder) =>
-  `${reminder.title} · ${formatChargeDay(toIsoDate(reminder.date))}, ${formatHour(reminder.date.getHours())}`;
+const formatReminder = (reminder: Reminder, language: Language) =>
+  `${reminder.title} · ${formatChargeDay(toIsoDate(reminder.date), language)}, ${formatHour(reminder.date.getHours())}`;
 
 export default function Settings() {
   const db = useSQLiteContext();
+  const styles = useStyles();
+  const { colors, t, themeMode, language, setThemeMode, setLanguage } = usePreferences();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [nameDraft, setNameDraft] = useState('');
   const [permission, setPermission] = useState<PermissionState>('undetermined');
   const [scheduledCount, setScheduledCount] = useState(0);
   const [nextReminder, setNextReminder] = useState<Reminder | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<StringKey | null>(null);
 
   const refresh = useCallback(async () => {
     const [loadedSettings, subscriptions, permissionState, count] = await Promise.all([
@@ -100,51 +123,53 @@ export default function Settings() {
     save('reminderDays', days.sort((a, b) => b - a));
   };
 
+  const changeLanguage = async (nextLanguage: Language) => {
+    await setLanguage(nextLanguage);
+    await syncReminders(db);
+    await refresh();
+  };
+
   const handleTest = async () => {
     const state = await requestPermission();
     setPermission(state);
 
     if (state !== 'granted') {
-      setMessage('Χωρίς άδεια δεν μπορώ να σου στείλω ειδοποιήσεις.');
+      setMessage('settings.noPermission');
       return;
     }
 
     await syncReminders(db);
-    await sendTestNotification();
+    await sendTestNotification(language);
     await refresh();
-    setMessage('Έρχεται σε 5 δευτερόλεπτα.');
+    setMessage('settings.testComing');
   };
 
   const confirmDeleteAll = () =>
-    Alert.alert(
-      'Διαγραφή όλων των δεδομένων',
-      'Θα σβηστούν όλες οι συνδρομές και όλο το ιστορικό σου. Δεν γίνεται αναίρεση.',
-      [
-        { text: 'Άκυρο', style: 'cancel' },
-        {
-          text: 'Συνέχεια',
-          style: 'destructive',
-          onPress: () =>
-            Alert.alert('Σίγουρα;', 'Τελευταία ευκαιρία, μετά χάνονται όλα.', [
-              { text: 'Άκυρο', style: 'cancel' },
-              {
-                text: 'Σβήσ’ τα όλα',
-                style: 'destructive',
-                onPress: async () => {
-                  await deleteAllData(db);
-                  await syncReminders(db);
-                  await refresh();
-                  setMessage(null);
-                },
+    Alert.alert(t('settings.deleteAll'), t('settings.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.continue'),
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert(t('settings.deleteSure'), t('settings.deleteLastChance'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: t('settings.deleteEverything'),
+              style: 'destructive',
+              onPress: async () => {
+                await deleteAllData(db);
+                await syncReminders(db);
+                await refresh();
+                setMessage(null);
               },
-            ]),
-        },
-      ],
-    );
+            },
+          ]),
+      },
+    ]);
 
   const openFeedback = () =>
     Linking.openURL(
-      `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(`Τσεπάκι ${APP_VERSION} – σχόλια`)}`,
+      `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(t('settings.feedbackSubject', { version: APP_VERSION }))}`,
     );
 
   return (
@@ -153,44 +178,71 @@ export default function Settings() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Ρυθμίσεις</Text>
+      <Text style={styles.title}>{t('settings.title')}</Text>
 
-      <Section title="Εσύ">
-        <Text style={styles.rowLabel}>Πώς να σε φωνάζω;</Text>
+      <Section title={t('settings.you')}>
+        <Text style={styles.rowLabel}>{t('settings.nameLabel')}</Text>
         <TextInput
           value={nameDraft}
           onChangeText={setNameDraft}
           onEndEditing={saveName}
-          placeholder="π.χ. Πάνο"
+          placeholder={t('settings.namePlaceholder')}
           placeholderTextColor={colors.textMuted}
           style={styles.input}
           returnKeyType="done"
-          accessibilityLabel="Το όνομά σου"
+          accessibilityLabel={t('settings.nameLabel')}
         />
-        <Text style={styles.hint}>Εμφανίζεται στον χαιρετισμό της αρχικής οθόνης.</Text>
+        <Text style={styles.hint}>{t('settings.nameHint')}</Text>
       </Section>
 
-      <Section title="Ειδοποιήσεις">
+      <Section title={t('settings.appearance')}>
+        <View style={styles.chips}>
+          {THEME_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={t(option.key)}
+              isActive={themeMode === option.value}
+              onPress={() => setThemeMode(option.value)}
+            />
+          ))}
+        </View>
+        <Text style={styles.hint}>{t('settings.themeHint')}</Text>
+      </Section>
+
+      <Section title={t('settings.language')}>
+        <View style={styles.chips}>
+          {LANGUAGE_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              isActive={language === option.value}
+              onPress={() => changeLanguage(option.value)}
+            />
+          ))}
+        </View>
+      </Section>
+
+      <Section title={t('settings.notifications')}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Κατάσταση</Text>
+          <Text style={styles.rowLabel}>{t('settings.status')}</Text>
           <Text style={[styles.rowValue, permission === 'granted' && styles.rowValueOn]}>
-            {STATUS_LABEL[permission]}
+            {t(STATUS_KEYS[permission])}
           </Text>
         </View>
 
-        <Text style={styles.rowLabel}>Πότε να σου θυμίζω</Text>
+        <Text style={styles.rowLabel}>{t('settings.when')}</Text>
         <View style={styles.chips}>
           {REMINDER_DAY_OPTIONS.map((option) => (
             <Chip
               key={option.value}
-              label={option.label}
+              label={t(DAY_KEYS[option.value])}
               isActive={settings.reminderDays.includes(option.value)}
               onPress={() => toggleDay(option.value)}
             />
           ))}
         </View>
 
-        <Text style={styles.rowLabel}>Τι ώρα</Text>
+        <Text style={styles.rowLabel}>{t('settings.time')}</Text>
         <View style={styles.chips}>
           {REMINDER_HOUR_OPTIONS.map((hour) => (
             <Chip
@@ -203,30 +255,30 @@ export default function Settings() {
         </View>
 
         <View style={styles.row}>
-          <Text style={[styles.rowLabel, styles.flex]}>Ετήσιες συνδρομές: μία εβδομάδα πριν</Text>
+          <Text style={[styles.rowLabel, styles.flex]}>{t('settings.yearly')}</Text>
           <Switch
             value={settings.yearlyReminder}
             onValueChange={(value) => save('yearlyReminder', value)}
             trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
-            thumbColor={colors.text}
+            thumbColor="#FFFFFF"
           />
         </View>
 
         {settings.reminderDays.length === 0 && (
-          <Text style={styles.warning}>Δεν έχεις διαλέξει μέρα, οπότε δεν θα σου έρχονται υπενθυμίσεις.</Text>
+          <Text style={styles.warning}>{t('settings.noDays')}</Text>
         )}
 
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Προγραμματισμένες</Text>
+          <Text style={styles.rowLabel}>{t('settings.scheduled')}</Text>
           <Text style={styles.rowValue}>{scheduledCount}</Text>
         </View>
 
         {nextReminder && (
           <View style={styles.next}>
-            <Text style={styles.rowLabel}>Επόμενη υπενθύμιση</Text>
-            <Text style={styles.rowValue}>{formatReminder(nextReminder)}</Text>
+            <Text style={styles.rowLabel}>{t('settings.nextReminder')}</Text>
+            <Text style={styles.rowValue}>{formatReminder(nextReminder, language)}</Text>
             <Text style={styles.preview}>«{nextReminder.body}»</Text>
           </View>
         )}
@@ -236,67 +288,61 @@ export default function Settings() {
           accessibilityRole="button"
           style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
-          <Text style={styles.buttonText}>Στείλε μια δοκιμαστική</Text>
+          <Text style={styles.buttonText}>{t('settings.sendTest')}</Text>
         </Pressable>
 
         {permission === 'denied' && (
           <Pressable onPress={() => Linking.openSettings()} accessibilityRole="link">
-            <Text style={styles.link}>Άνοιξε τις ρυθμίσεις του κινητού</Text>
+            <Text style={styles.link}>{t('settings.openPhoneSettings')}</Text>
           </Pressable>
         )}
 
-        {message && <Text style={styles.hint}>{message}</Text>}
+        {message && <Text style={styles.hint}>{t(message)}</Text>}
       </Section>
 
       {(FEEDBACK_EMAIL || PLAY_STORE_URL) && (
-        <Section title="Επικοινωνία">
-          {FEEDBACK_EMAIL ? (
-            <LinkRow label="Στείλε μας τη γνώμη σου" onPress={openFeedback} />
-          ) : null}
+        <Section title={t('settings.contact')}>
+          {FEEDBACK_EMAIL ? <LinkRow label={t('settings.feedback')} onPress={openFeedback} /> : null}
           {PLAY_STORE_URL ? (
-            <LinkRow label="Βαθμολόγησέ μας" onPress={() => Linking.openURL(PLAY_STORE_URL)} />
+            <LinkRow label={t('settings.rate')} onPress={() => Linking.openURL(PLAY_STORE_URL)} />
           ) : null}
         </Section>
       )}
 
-      <Section title="Δεδομένα">
+      <Section title={t('settings.data')}>
         <Pressable
           onPress={confirmDeleteAll}
           accessibilityRole="button"
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
-          <Text style={styles.deleteText}>Διαγραφή όλων των δεδομένων</Text>
+          <Text style={styles.deleteText}>{t('settings.deleteAll')}</Text>
         </Pressable>
-        <Text style={styles.hint}>Σβήνει όλες τις συνδρομές και το ιστορικό σου.</Text>
+        <Text style={styles.hint}>{t('settings.deleteHint')}</Text>
       </Section>
 
-      <Section title="Σχετικά">
+      <Section title={t('settings.about')}>
         <View style={styles.about}>
           <AppLogo size={64} />
           <View style={styles.aboutText}>
-            <Text style={styles.appName}>Τσεπάκι</Text>
-            <Text style={styles.rowValue}>Έκδοση {APP_VERSION}</Text>
+            <Text style={styles.appName}>{t('common.appName')}</Text>
+            <Text style={styles.rowValue}>{t('settings.version', { version: APP_VERSION })}</Text>
           </View>
-          <Text style={styles.tagline}>Σου θυμίζω κάθε χρέωση πριν φύγουν τα λεφτά.</Text>
-          <Text style={styles.maker}>Φτιαγμένο στην Ελλάδα από τον PG</Text>
+          <Text style={styles.tagline}>{t('settings.tagline')}</Text>
+          <Text style={styles.maker}>{t('settings.maker')}</Text>
         </View>
 
         <View style={styles.divider} />
 
-        <Text style={styles.hint}>
-          Όλα τα δεδομένα σου μένουν μόνο σε αυτό το κινητό. Δεν συνδεόμαστε με τράπεζα και δεν
-          στέλνουμε τίποτα σε server.
-        </Text>
+        <Text style={styles.hint}>{t('settings.privacy')}</Text>
 
         {PRIVACY_POLICY_URL ? (
-          <LinkRow label="Πολιτική απορρήτου" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} />
+          <LinkRow
+            label={t('settings.privacyPolicy')}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          />
         ) : null}
 
-        <Text style={styles.legal}>
-          Τα λογότυπα και τα ονόματα των υπηρεσιών ανήκουν στους κατόχους τους και χρησιμοποιούνται
-          μόνο για να αναγνωρίζεις τις συνδρομές σου. Τα λογότυπα παρέχονται από το Brandfetch, στο
-          οποίο στέλνεται μόνο το όνομα του site της υπηρεσίας.
-        </Text>
+        <Text style={styles.legal}>{t('settings.legal')}</Text>
       </Section>
     </ScrollView>
   );
@@ -304,40 +350,49 @@ export default function Settings() {
 
 type SectionProps = { title: string; children: React.ReactNode };
 
-const Section = ({ title, children }: SectionProps) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.card}>{children}</View>
-  </View>
-);
+const Section = ({ title, children }: SectionProps) => {
+  const styles = useStyles();
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.card}>{children}</View>
+    </View>
+  );
+};
 
 type ChipProps = { label: string; isActive: boolean; onPress: () => void };
 
-const Chip = ({ label, isActive, onPress }: ChipProps) => (
-  <Pressable
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityState={{ selected: isActive }}
-    style={[styles.chip, isActive && styles.chipActive]}
-  >
-    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{label}</Text>
-  </Pressable>
-);
+const Chip = ({ label, isActive, onPress }: ChipProps) => {
+  const styles = useStyles();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
+      style={[styles.chip, isActive && styles.chipActive]}
+    >
+      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 type LinkRowProps = { label: string; onPress: () => void };
 
-const LinkRow = ({ label, onPress }: LinkRowProps) => (
-  <Pressable
-    onPress={onPress}
-    accessibilityRole="link"
-    style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-  >
-    <Text style={styles.rowLabel}>{label}</Text>
-    <Text style={styles.chevron}>›</Text>
-  </Pressable>
-);
+const LinkRow = ({ label, onPress }: LinkRowProps) => {
+  const styles = useStyles();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    >
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.chevron}>›</Text>
+    </Pressable>
+  );
+};
 
-const styles = StyleSheet.create({
+const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: spacing.lg,
@@ -414,4 +469,4 @@ const styles = StyleSheet.create({
   deleteText: { color: colors.warning, fontSize: 15, fontFamily: fonts.medium },
   link: { color: colors.accentBright, fontSize: 14, fontFamily: fonts.medium },
   chevron: { color: colors.textMuted, fontSize: 22, fontFamily: fonts.regular },
-});
+}));
