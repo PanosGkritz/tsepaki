@@ -4,7 +4,7 @@ import { getSettings, type AppSettings } from '../db/settings';
 import { getSubscriptions } from '../db/subscriptions';
 import { getDeviceLanguage, type Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
-import { parseIsoDate } from './dates';
+import { parseIsoDate, toIsoDate } from './dates';
 import { formatEuro } from './format';
 import { getPermissionState, replaceScheduledReminders, type Reminder } from './notifications';
 
@@ -18,6 +18,10 @@ type Templates = {
   today: string[];
   tomorrow: string[];
   onDay: string[];
+  manualToday: string[];
+  manualTomorrow: string[];
+  manualOnDay: string[];
+  overdue: string;
   categoryTomorrow: Record<string, string>;
   yearly: string;
   groupToday: string;
@@ -49,6 +53,10 @@ const TEMPLATES: Record<Language, Templates> = {
       'Ετοιμάσου, αύριο πάνε {amount}.',
     ],
     onDay: ['{day} σού τραβάει {amount}.', '{day} φεύγουν {amount}.'],
+    manualToday: ['Σήμερα πληρώνεις {amount}.', 'Σήμερα είναι η μέρα να πληρώσεις {amount}.'],
+    manualTomorrow: ['Αύριο πληρώνεις {amount}.', 'Μην το ξεχάσεις, αύριο πληρώνεις {amount}.'],
+    manualOnDay: ['{day} πληρώνεις {amount}.'],
+    overdue: 'Μήπως ξέχασες να το πληρώσεις; Ήταν {amount} στις {date}.',
     categoryTomorrow: {
       streaming: 'Αύριο {amount} για να μη σου κόψει τη σειρά στη μέση.',
       music: 'Αύριο {amount} για να συνεχίσει να παίζει η μουσική.',
@@ -86,7 +94,11 @@ const TEMPLATES: Record<Language, Templates> = {
       'Tomorrow {amount} goes out.',
       'Heads up, {amount} goes out tomorrow.',
     ],
-    onDay: ['{day} you’ll be charged {amount}.', '{day} {amount} goes out.'],
+    onDay: ['You’ll be charged {amount} {day}.', '{amount} goes out {day}.'],
+    manualToday: ['Payment due today: {amount}.', 'Today’s the day to pay {amount}.'],
+    manualTomorrow: ['Payment due tomorrow: {amount}.', 'Don’t forget, you pay {amount} tomorrow.'],
+    manualOnDay: ['{amount} to pay {day}.'],
+    overdue: 'Forgot to pay? {amount} was due on {date}.',
     categoryTomorrow: {
       streaming: 'Tomorrow {amount}, so your show doesn’t stop mid-season.',
       music: 'Tomorrow {amount} to keep the music playing.',
@@ -100,7 +112,7 @@ const TEMPLATES: Record<Language, Templates> = {
     yearly: 'Renews in one week for the whole year: {amount}.',
     groupToday: 'Today {amount} goes out in total.',
     groupTomorrow: 'Tomorrow {amount} goes out in total.',
-    groupOnDay: '{day} {amount} goes out in total.',
+    groupOnDay: 'In total, {amount} goes out {day}.',
     and: 'and',
     many: '{count} subscriptions',
   },
@@ -119,6 +131,11 @@ const fill = (template: string, amount: string, day = '') =>
   template.replace('{amount}', amount).replace('{day}', day);
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const formatShortDate = (iso: string) => {
+  const date = parseIsoDate(iso);
+  return `${date.getDate()}/${date.getMonth() + 1}`;
+};
 
 const pickVariant = (options: string[], seed: string) => {
   let hash = 0;
@@ -149,16 +166,21 @@ const buildSingleBody = (
   language: Language,
 ) => {
   const amount = formatEuro(subscription.price, language);
+  const isManual = subscription.paymentMode === 'manual';
 
-  if (daysBefore === 0) return fill(pickVariant(templates.today, seed), amount);
+  if (daysBefore === 0) {
+    return fill(pickVariant(isManual ? templates.manualToday : templates.today, seed), amount);
+  }
 
   if (daysBefore === 1) {
+    const base = isManual ? templates.manualTomorrow : templates.tomorrow;
     const flavor = templates.categoryTomorrow[subscription.category];
-    const options = flavor ? [...templates.tomorrow, flavor] : templates.tomorrow;
+    const options = flavor ? [...base, flavor] : base;
     return fill(pickVariant(options, seed), amount);
   }
 
-  return fill(pickVariant(templates.onDay, seed), amount, day);
+  const options = isManual ? templates.manualOnDay : templates.onDay;
+  return capitalize(fill(pickVariant(options, seed), amount, day));
 };
 
 const buildGroupBody = (
@@ -171,7 +193,7 @@ const buildGroupBody = (
   const amount = formatEuro(total, language);
   if (daysBefore === 0) return fill(templates.groupToday, amount);
   if (daysBefore === 1) return fill(templates.groupTomorrow, amount);
-  return fill(templates.groupOnDay, amount, day);
+  return capitalize(fill(templates.groupOnDay, amount, day));
 };
 
 const buildGroupReminder = (
@@ -184,11 +206,13 @@ const buildGroupReminder = (
   const templates = TEMPLATES[language];
   const id = `${chargeDate}-${daysBefore}`;
   const date = buildReminderDate(chargeDate, daysBefore, hour);
-  const day = capitalize(templates.weekdayOn[parseIsoDate(chargeDate).getDay()]);
+  const day = templates.weekdayOn[parseIsoDate(chargeDate).getDay()];
+  // Το κουμπί «Το πλήρωσα» μπαίνει μόνο για όσες πληρώνει ο χρήστης μόνος του.
+  const manualIds = group
+    .filter((subscription) => subscription.paymentMode === 'manual')
+    .map((subscription) => subscription.id);
   const payload =
-    daysBefore === 0
-      ? { subscriptionIds: group.map((subscription) => subscription.id), chargeDate }
-      : undefined;
+    daysBefore === 0 && manualIds.length > 0 ? { subscriptionIds: manualIds, chargeDate } : undefined;
   const single = group.length === 1 ? group[0] : undefined;
 
   if (single) {
@@ -234,6 +258,37 @@ const buildYearlyReminders = (
       body: fill(TEMPLATES[language].yearly, formatEuro(subscription.price, language)),
     }));
 
+const nextReminderTime = (hour: number, now: Date) => {
+  const date = new Date(now);
+  date.setHours(hour, 0, 0, 0);
+  if (date <= now) date.setDate(date.getDate() + 1);
+  return date;
+};
+
+const buildOverdueReminders = (
+  subscriptions: Subscription[],
+  hour: number,
+  language: Language,
+  now: Date,
+): Reminder[] => {
+  const todayIso = toIsoDate(now);
+
+  return subscriptions
+    .filter(
+      (subscription) =>
+        subscription.paymentMode === 'manual' && subscription.nextChargeDate < todayIso,
+    )
+    .map((subscription) => ({
+      id: `${subscription.id}-overdue`,
+      date: nextReminderTime(hour, now),
+      title: subscription.name,
+      body: TEMPLATES[language].overdue
+        .replace('{amount}', formatEuro(subscription.price, language))
+        .replace('{date}', formatShortDate(subscription.nextChargeDate)),
+      payload: { subscriptionIds: [subscription.id], chargeDate: subscription.nextChargeDate },
+    }));
+};
+
 export const resolveLanguage = (settings: Pick<AppSettings, 'language'>) =>
   settings.language ?? getDeviceLanguage();
 
@@ -254,7 +309,9 @@ export const buildReminders = (
     ? buildYearlyReminders(subscriptions, settings.reminderHour, language)
     : [];
 
-  return [...grouped, ...yearly]
+  const overdue = buildOverdueReminders(subscriptions, settings.reminderHour, language, now);
+
+  return [...overdue, ...grouped, ...yearly]
     .filter((reminder) => reminder.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, MAX_REMINDERS);

@@ -11,6 +11,7 @@ type SubscriptionRowProps = {
   subtitle: React.ReactNode;
   showDivider: boolean;
   onPress?: () => void;
+  action?: React.ReactNode;
 };
 
 export const SubscriptionRow = ({
@@ -18,6 +19,7 @@ export const SubscriptionRow = ({
   subtitle,
   showDivider,
   onPress,
+  action,
 }: SubscriptionRowProps) => {
   const styles = useStyles();
   const { language } = usePreferences();
@@ -50,7 +52,10 @@ export const SubscriptionRow = ({
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
-      <Text style={styles.price}>{price}</Text>
+      <View style={styles.side}>
+        <Text style={styles.price}>{price}</Text>
+        {action}
+      </View>
     </Pressable>
   );
 };
@@ -70,6 +75,7 @@ const useStyles = createStyles((colors) => ({
   info: { flex: 1, gap: 2 },
   name: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   subtitle: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
+  side: { alignItems: 'flex-end', gap: 6 },
   price: {
     color: colors.text,
     fontSize: 15,

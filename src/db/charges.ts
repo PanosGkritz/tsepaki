@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { CalendarItem } from '../lib/calendar';
 import { addCycle, toIsoDate } from '../lib/dates';
-import { getSubscriptions } from './subscriptions';
+import { getSubscriptions, toPaymentMode } from './subscriptions';
 
 type ChargeJoinRow = {
   charge_id: number;
@@ -15,6 +15,7 @@ type ChargeJoinRow = {
   category: string;
   service_id: string | null;
   domain: string | null;
+  payment_mode: string;
 };
 
 const recordCharge = async (
@@ -51,6 +52,9 @@ export const processDueCharges = async (db: SQLiteDatabase, today = new Date()) 
   const subscriptions = await getSubscriptions(db);
 
   for (const subscription of subscriptions) {
+    // Όσες πληρώνει ο χρήστης μόνος του καταγράφονται μόνο όταν πατήσει «Πλήρωσα».
+    if (subscription.paymentMode === 'manual') continue;
+
     let nextDate = subscription.nextChargeDate;
     if (nextDate >= todayIso) continue;
 
@@ -110,7 +114,7 @@ export const getChargedItems = async (db: SQLiteDatabase, fromIso: string, toIso
   const rows = await db.getAllAsync<ChargeJoinRow>(
     `SELECT c.id AS charge_id, c.charge_date, c.amount_cents,
             s.id AS subscription_id, s.name, s.cycle, s.next_charge_date,
-            s.color, s.category, s.service_id, s.domain
+            s.color, s.category, s.service_id, s.domain, s.payment_mode
      FROM charges c
      JOIN subscriptions s ON s.id = c.subscription_id
      WHERE c.charge_date >= ? AND c.charge_date <= ?
@@ -133,6 +137,7 @@ export const getChargedItems = async (db: SQLiteDatabase, fromIso: string, toIso
         nextChargeDate: row.next_charge_date,
         color: row.color,
         category: row.category,
+        paymentMode: toPaymentMode(row.payment_mode),
         serviceId: row.service_id ?? undefined,
         domain: row.domain ?? undefined,
       },

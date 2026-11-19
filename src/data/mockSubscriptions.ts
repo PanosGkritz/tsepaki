@@ -8,6 +8,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-19',
     color: '#E50914',
+    paymentMode: 'auto',
     category: 'streaming',
   },
   {
@@ -17,6 +18,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-22',
     color: '#1DB954',
+    paymentMode: 'auto',
     category: 'music',
   },
   {
@@ -26,6 +28,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-25',
     color: '#E20074',
+    paymentMode: 'auto',
     category: 'mobile',
   },
   {
@@ -35,6 +38,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-11-28',
     color: '#107C10',
+    paymentMode: 'auto',
     category: 'gaming',
   },
   {
@@ -44,6 +48,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-12-03',
     color: '#3693F3',
+    paymentMode: 'auto',
     category: 'storage',
   },
   {
@@ -53,6 +58,7 @@ export const mockSubscriptions: Subscription[] = [
     cycle: 'monthly',
     nextChargeDate: '2026-12-05',
     color: '#D97757',
+    paymentMode: 'auto',
     category: 'ai',
   },
 ];

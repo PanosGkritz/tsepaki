@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { markChargesPaid } from '../db/charges';
+import { notifyDataChanged } from '../lib/events';
 import { PAID_ACTION, readChargePayload } from '../lib/notifications';
 import { syncReminders } from '../lib/reminders';
 
@@ -14,7 +15,7 @@ export const ReminderSync = () => {
     syncReminders(db);
 
     const listener = AppState.addEventListener('change', (state) => {
-      if (state === 'active') syncReminders(db);
+      if (state === 'active') syncReminders(db).then(notifyDataChanged);
     });
 
     return () => listener.remove();
@@ -24,10 +25,11 @@ export const ReminderSync = () => {
     if (lastResponse?.actionIdentifier !== PAID_ACTION) return;
 
     const payload = readChargePayload(lastResponse.notification.request.content.data);
-    if (!payload) return;
+    if (!payload || payload.subscriptionIds.length === 0) return;
 
     markChargesPaid(db, payload.subscriptionIds, payload.chargeDate)
       .then(() => syncReminders(db))
+      .then(notifyDataChanged)
       .catch(() => {
         // Αν αποτύχει, η χρέωση θα καταγραφεί αυτόματα την επόμενη μέρα.
       });

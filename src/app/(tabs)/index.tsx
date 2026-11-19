@@ -1,13 +1,14 @@
-import { Redirect, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { MonthSummaryCard } from '../../components/MonthSummaryCard';
 import { UpcomingCharges } from '../../components/UpcomingCharges';
 import { fonts, spacing } from '../../constants/theme';
-import { getPaidBetween } from '../../db/charges';
+import { getPaidBetween, markChargesPaid } from '../../db/charges';
 import { getSettings } from '../../db/settings';
 import { getSubscriptions } from '../../db/subscriptions';
+import { onDataChanged } from '../../lib/events';
 import { buildGreeting } from '../../lib/greeting';
 import { syncReminders } from '../../lib/reminders';
 import { createStyles } from '../../lib/styles';
@@ -24,36 +25,39 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
+  const load = useCallback(async () => {
+    const settings = await getSettings(db);
+    setUserName(settings.userName);
+    setOnboardingDone(settings.onboardingDone);
+    if (!settings.onboardingDone) return;
+
+    await syncReminders(db);
+    const { from, to } = getMonthRange();
+    const [loadedSubscriptions, paidThisMonth] = await Promise.all([
+      getSubscriptions(db),
+      getPaidBetween(db, from, to),
+    ]);
+
+    setSubscriptions(loadedSubscriptions);
+    setPaid(paidThisMonth);
+  }, [db]);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const load = async () => {
-        const settings = await getSettings(db);
-        if (!isActive) return;
-        setUserName(settings.userName);
-        setOnboardingDone(settings.onboardingDone);
-        if (!settings.onboardingDone) return;
-
-        await syncReminders(db);
-        const { from, to } = getMonthRange();
-        const [loadedSubscriptions, paidThisMonth] = await Promise.all([
-          getSubscriptions(db),
-          getPaidBetween(db, from, to),
-        ]);
-
-        if (!isActive) return;
-        setSubscriptions(loadedSubscriptions);
-        setPaid(paidThisMonth);
-      };
-
       load();
-
-      return () => {
-        isActive = false;
-      };
-    }, [db]),
+    }, [load]),
   );
+
+  useEffect(() => onDataChanged(load), [load]);
+
+  const handleMarkPaid = async (subscription: Subscription) => {
+    await markChargesPaid(db, [subscription.id], subscription.nextChargeDate);
+    await syncReminders(db);
+    await load();
+  };
+
+  const openPaidHistory = () =>
+    router.navigate({ pathname: '/history', params: { focus: 'charges' } });
 
   if (onboardingDone === null) return <View style={styles.screen} />;
   if (!onboardingDone) return <Redirect href="/welcome" />;
@@ -72,9 +76,10 @@ export default function Home() {
         total={summary.total}
         paid={summary.paid}
         subscriptionCount={summary.count}
+        onPaidPress={openPaidHistory}
       />
 
-      <UpcomingCharges subscriptions={subscriptions} />
+      <UpcomingCharges subscriptions={subscriptions} onMarkPaid={handleMarkPaid} />
     </ScrollView>
   );
 }

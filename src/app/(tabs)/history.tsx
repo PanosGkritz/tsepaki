@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CategoryBreakdown } from '../../components/CategoryBreakdown';
 import { MonthlyBars } from '../../components/MonthlyBars';
@@ -26,6 +26,8 @@ type MonthGroup = {
   total: number;
   items: CalendarItem[];
 };
+
+const SCROLL_OFFSET = 16;
 
 const sumAmounts = (items: CalendarItem[]) => items.reduce((sum, item) => sum + item.amount, 0);
 
@@ -53,15 +55,30 @@ export default function History() {
   const db = useSQLiteContext();
   const styles = useStyles();
   const { colors, t, language } = usePreferences();
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const [charges, setCharges] = useState<CalendarItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [query, setQuery] = useState('');
 
+  const scrollRef = useRef<ScrollView>(null);
+  const chargesY = useRef(0);
+  const pendingScroll = useRef(false);
+
   const year = new Date().getFullYear();
+
+  const scrollToCharges = () => {
+    scrollRef.current?.scrollTo({ y: Math.max(0, chargesY.current - SCROLL_OFFSET), animated: true });
+    pendingScroll.current = false;
+  };
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
+
+      if (focus === 'charges') {
+        pendingScroll.current = true;
+        router.setParams({ focus: undefined });
+      }
 
       const load = async () => {
         await syncReminders(db);
@@ -73,6 +90,8 @@ export default function History() {
         if (!isActive) return;
         setCharges(loadedCharges);
         setSubscriptions(loadedSubscriptions);
+
+        if (pendingScroll.current) requestAnimationFrame(scrollToCharges);
       };
 
       load();
@@ -80,7 +99,7 @@ export default function History() {
       return () => {
         isActive = false;
       };
-    }, [db]),
+    }, [db, focus]),
   );
 
   const chargesThisYear = charges.filter((item) => item.date.startsWith(`${year}-`));
@@ -100,6 +119,7 @@ export default function History() {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -131,7 +151,15 @@ export default function History() {
         </>
       )}
 
-      <Text style={styles.sectionTitle}>{t('history.all')}</Text>
+      <Text
+        style={styles.sectionTitle}
+        onLayout={(event) => {
+          chargesY.current = event.nativeEvent.layout.y;
+          if (pendingScroll.current) scrollToCharges();
+        }}
+      >
+        {t('history.all')}
+      </Text>
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={colors.textMuted} />

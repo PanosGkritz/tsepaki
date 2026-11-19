@@ -7,6 +7,7 @@ export const homeStrings = {
   'summary.countOne': { el: '1 συνδρομή', en: '1 subscription' },
   'summary.caption': { el: 'το σύνολο αυτού του μήνα', en: 'total for this month' },
   'summary.paid': { el: 'Πληρώθηκαν', en: 'Paid' },
+  'summary.paidLabel': { el: 'Δες τι πληρώθηκε', en: 'See what was paid' },
   'summary.remaining': { el: 'Απομένουν', en: 'Remaining' },
 
   'upcoming.title': { el: 'Επόμενες χρεώσεις', en: 'Upcoming charges' },
@@ -14,5 +15,12 @@ export const homeStrings = {
   'upcoming.empty': {
     el: 'Δεν έχεις ακόμα συνδρομές. Πάτα το + για να προσθέσεις.',
     en: 'You don’t have any subscriptions yet. Tap + to add one.',
+  },
+  'upcoming.overdue': { el: 'εκκρεμεί', en: 'overdue' },
+  'upcoming.swipe': { el: 'Σύρε για τις υπόλοιπες', en: 'Swipe for more' },
+  'upcoming.markPaid': { el: 'Πλήρωσα', en: 'Paid' },
+  'upcoming.markPaidLabel': {
+    el: 'Σημείωσε το {name} ως πληρωμένο',
+    en: 'Mark {name} as paid',
   },
 } satisfies Strings;

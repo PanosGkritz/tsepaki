@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -114,6 +114,15 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     `);
 
     currentVersion = 7;
+  }
+
+  if (currentVersion === 7) {
+    await db.execAsync(`
+      ALTER TABLE subscriptions ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'auto';
+      UPDATE subscriptions SET payment_mode = 'manual' WHERE category = 'activities';
+    `);
+
+    currentVersion = 8;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

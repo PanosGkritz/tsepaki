@@ -1,5 +1,10 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { BillingCycle, NewSubscription, Subscription } from '../types/subscription';
+import type {
+  BillingCycle,
+  NewSubscription,
+  PaymentMode,
+  Subscription,
+} from '../types/subscription';
 
 type SubscriptionRow = {
   id: string;
@@ -11,9 +16,13 @@ type SubscriptionRow = {
   category: string;
   service_id: string | null;
   domain: string | null;
+  payment_mode: string;
 };
 
 const toCycle = (value: string): BillingCycle => (value === 'yearly' ? 'yearly' : 'monthly');
+
+export const toPaymentMode = (value: string): PaymentMode =>
+  value === 'manual' ? 'manual' : 'auto';
 
 const toSubscription = (row: SubscriptionRow): Subscription => ({
   id: row.id,
@@ -23,6 +32,7 @@ const toSubscription = (row: SubscriptionRow): Subscription => ({
   nextChargeDate: row.next_charge_date,
   color: row.color,
   category: row.category,
+  paymentMode: toPaymentMode(row.payment_mode),
   serviceId: row.service_id ?? undefined,
   domain: row.domain ?? undefined,
 });
@@ -46,8 +56,8 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
 
   await db.runAsync(
     `INSERT INTO subscriptions
-       (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain, payment_mode)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -57,6 +67,7 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
     subscription.category,
     subscription.serviceId ?? null,
     subscription.domain ?? null,
+    subscription.paymentMode,
   );
 
   return id;
@@ -70,7 +81,7 @@ export const updateSubscription = async (
   await db.runAsync(
     `UPDATE subscriptions
      SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
-         category = ?, service_id = ?, domain = ?
+         category = ?, service_id = ?, domain = ?, payment_mode = ?
      WHERE id = ?`,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -80,6 +91,7 @@ export const updateSubscription = async (
     subscription.category,
     subscription.serviceId ?? null,
     subscription.domain ?? null,
+    subscription.paymentMode,
     id,
   );
 };

@@ -42,10 +42,11 @@ export const getMonthRange = (date = new Date()) => ({
 });
 
 export const getMonthSummary = (subscriptions: Subscription[], paid: number, date = new Date()) => {
-  const { from, to } = getMonthRange(date);
+  const { to } = getMonthRange(date);
 
+  // Μετράνε και όσες έμειναν απλήρωτες από προηγούμενο μήνα.
   const remaining = subscriptions
-    .filter((subscription) => subscription.nextChargeDate >= from && subscription.nextChargeDate <= to)
+    .filter((subscription) => subscription.nextChargeDate <= to)
     .reduce((sum, subscription) => sum + subscription.price, 0);
 
   return {

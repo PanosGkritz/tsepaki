@@ -31,4 +31,6 @@ export const catalogStrings = {
   },
   'add.manual': { el: 'Πρόσθεσε κάτι δικό σου', en: 'Add your own' },
   'add.added': { el: 'έχει προστεθεί', en: 'already added' },
+  'add.showAll': { el: 'Δείξε όλες ({count})', en: 'Show all ({count})' },
+  'add.showLess': { el: 'Λιγότερες', en: 'Show less' },
 } satisfies Strings;

@@ -18,6 +18,10 @@ import { LOCALES } from '../../i18n';
 import { createStyles } from '../../lib/styles';
 import { usePreferences } from '../../providers/PreferencesProvider';
 
+const PREVIEW_COUNT = 4;
+
+type Section = 'online' | 'local';
+
 export default function Add() {
   const db = useSQLiteContext();
   const styles = useStyles();
@@ -25,6 +29,10 @@ export default function Add() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const [addedIds, setAddedIds] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<Record<Section, boolean>>({
+    online: false,
+    local: false,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -36,6 +44,8 @@ export default function Add() {
 
   const locale = LOCALES[language];
   const normalizedQuery = query.trim().toLocaleLowerCase(locale);
+  const isFiltering = normalizedQuery.length > 0 || filter !== 'all';
+
   const visibleServices = services.filter((service) => {
     const matchesFilter = filter === 'all' || service.category === filter;
     const name = getServiceName(service, t).toLocaleLowerCase(locale);
@@ -48,18 +58,46 @@ export default function Add() {
   const openForm = (serviceId?: string) =>
     router.push({ pathname: '/subscription/new', params: serviceId ? { serviceId } : {} });
 
-  const renderGrid = (items: ServiceTemplate[]) => (
-    <View style={styles.grid}>
-      {items.map((service) => (
-        <ServiceCard
-          key={service.id}
-          service={service}
-          isAdded={addedIds.includes(service.id)}
-          onPress={() => openForm(service.id)}
-        />
-      ))}
-    </View>
-  );
+  const toggleSection = (section: Section) =>
+    setExpanded((current) => ({ ...current, [section]: !current[section] }));
+
+  const renderSection = (section: Section, items: ServiceTemplate[]) => {
+    const canCollapse = !isFiltering && items.length > PREVIEW_COUNT;
+    const isExpanded = expanded[section];
+    const shown = canCollapse && !isExpanded ? items.slice(0, PREVIEW_COUNT) : items;
+
+    return (
+      <>
+        <View style={styles.grid}>
+          {shown.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              isAdded={addedIds.includes(service.id)}
+              onPress={() => openForm(service.id)}
+            />
+          ))}
+        </View>
+
+        {canCollapse && (
+          <Pressable
+            onPress={() => toggleSection(section)}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.moreText}>
+              {isExpanded ? t('add.showLess') : t('add.showAll', { count: items.length })}
+            </Text>
+            <Ionicons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.accentBright}
+            />
+          </Pressable>
+        )}
+      </>
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -104,7 +142,7 @@ export default function Add() {
         {onlineServices.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>{t('add.popular')}</Text>
-            {renderGrid(onlineServices)}
+            {renderSection('online', onlineServices)}
           </>
         )}
 
@@ -114,7 +152,7 @@ export default function Add() {
               <Text style={styles.sectionTitle}>{t('add.offline')}</Text>
               <Text style={styles.sectionHint}>{t('add.offlineHint')}</Text>
             </View>
-            {renderGrid(localServices)}
+            {renderSection('local', localServices)}
           </>
         )}
 
@@ -169,6 +207,15 @@ const useStyles = createStyles((colors) => ({
   sectionTitle: { color: colors.text, fontSize: 16, fontFamily: fonts.semibold, marginTop: spacing.xs },
   sectionHint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  moreButton: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: 4,
+    height: 40,
+    paddingHorizontal: spacing.md,
+  },
+  moreText: { color: colors.accentBright, fontSize: 14, fontFamily: fonts.medium },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   footer: {
     paddingHorizontal: spacing.lg,

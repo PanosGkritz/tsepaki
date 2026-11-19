@@ -19,12 +19,24 @@ import { pickColor } from '../lib/colors';
 import { formatFullDate, parseIsoDate, toIsoDate } from '../lib/dates';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
-import type { BillingCycle, NewSubscription, Subscription } from '../types/subscription';
+import type {
+  BillingCycle,
+  NewSubscription,
+  PaymentMode,
+  Subscription,
+} from '../types/subscription';
 import { ServiceLogo } from './ServiceLogo';
 
-const CYCLES: { value: BillingCycle; key: StringKey }[] = [
+type SegmentOption<T extends string> = { value: T; key: StringKey };
+
+const CYCLES: SegmentOption<BillingCycle>[] = [
   { value: 'monthly', key: 'form.monthly' },
   { value: 'yearly', key: 'form.yearly' },
+];
+
+const PAYMENT_MODES: SegmentOption<PaymentMode>[] = [
+  { value: 'auto', key: 'form.paymentAuto' },
+  { value: 'manual', key: 'form.paymentManual' },
 ];
 
 const parsePrice = (text: string) => {
@@ -38,6 +50,12 @@ const formatPriceInput = (price: number, language: Language) =>
 const initialCategory = (initial?: Subscription, service?: ServiceTemplate): Category => {
   if (initial && isCategory(initial.category)) return initial.category;
   return service?.category ?? 'other';
+};
+
+// Οι online υπηρεσίες του καταλόγου τραβιούνται από κάρτα. Οι υπόλοιπες πληρώνονται με το χέρι.
+const initialPaymentMode = (initial?: Subscription, service?: ServiceTemplate): PaymentMode => {
+  if (initial) return initial.paymentMode;
+  return service?.domain ? 'auto' : 'manual';
 };
 
 type SubscriptionFormProps = {
@@ -70,6 +88,9 @@ export const SubscriptionForm = ({
     initial ? parseIsoDate(initial.nextChargeDate) : new Date(),
   );
   const [category, setCategory] = useState<Category>(initialCategory(initial, service));
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(
+    initialPaymentMode(initial, service),
+  );
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +125,7 @@ export const SubscriptionForm = ({
         nextChargeDate: toIsoDate(nextDate),
         color,
         category,
+        paymentMode,
         serviceId: service?.id ?? initial?.serviceId,
         domain: service?.domain ?? initial?.domain,
       });
@@ -171,24 +193,14 @@ export const SubscriptionForm = ({
         </Field>
 
         <Field label={t('form.cycle')}>
-          <View style={styles.segment}>
-            {CYCLES.map((item) => {
-              const isActive = item.value === cycle;
-              return (
-                <Pressable
-                  key={item.value}
-                  onPress={() => setCycle(item.value)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  style={[styles.segmentItem, isActive && styles.segmentItemActive]}
-                >
-                  <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                    {t(item.key)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Segment options={CYCLES} value={cycle} onChange={setCycle} />
+        </Field>
+
+        <Field label={t('form.payment')}>
+          <Segment options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} />
+          <Text style={styles.hint}>
+            {t(paymentMode === 'auto' ? 'form.paymentAutoHint' : 'form.paymentManualHint')}
+          </Text>
         </Field>
 
         <Field label={t('form.nextCharge')}>
@@ -272,6 +284,38 @@ const Field = ({ label, children }: FieldProps) => {
   );
 };
 
+type SegmentProps<T extends string> = {
+  options: SegmentOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+};
+
+const Segment = <T extends string,>({ options, value, onChange }: SegmentProps<T>) => {
+  const styles = useStyles();
+  const { t } = usePreferences();
+
+  return (
+    <View style={styles.segment}>
+      {options.map((item) => {
+        const isActive = item.value === value;
+        return (
+          <Pressable
+            key={item.value}
+            onPress={() => onChange(item.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            style={[styles.segmentItem, isActive && styles.segmentItemActive]}
+          >
+            <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+              {t(item.key)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+};
+
 const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2, gap: spacing.lg },
@@ -318,6 +362,7 @@ const useStyles = createStyles((colors) => ({
   segmentItemActive: { backgroundColor: colors.surfaceRaised },
   segmentText: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.medium },
   segmentTextActive: { color: colors.text },
+  hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
   iosDateRow: {
     flexDirection: 'row',
     alignItems: 'center',

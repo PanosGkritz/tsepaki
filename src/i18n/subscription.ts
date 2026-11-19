@@ -18,6 +18,17 @@ export const subscriptionStrings = {
   'form.monthly': { el: 'Μηνιαία', en: 'Monthly' },
   'form.yearly': { el: 'Ετήσια', en: 'Yearly' },
   'form.nextCharge': { el: 'Επόμενη χρέωση', en: 'Next charge' },
+  'form.payment': { el: 'Πώς πληρώνεται', en: 'How it’s paid' },
+  'form.paymentAuto': { el: 'Αυτόματα', en: 'Automatically' },
+  'form.paymentManual': { el: 'Την πληρώνω εγώ', en: 'I pay it myself' },
+  'form.paymentAutoHint': {
+    el: 'Τραβιέται μόνη της από την κάρτα. Την καταγράφω αυτόματα τη μέρα της χρέωσης.',
+    en: 'It’s charged to your card automatically. I log it on the charge day.',
+  },
+  'form.paymentManualHint': {
+    el: 'Την πληρώνεις εσύ, π.χ. με μετρητά ή μεταφορά. Πατάς «Πλήρωσα» και σου θυμίζω αν την ξεχάσεις.',
+    en: 'You pay it yourself, e.g. in cash or by transfer. Tap “Paid” and I’ll remind you if you forget.',
+  },
   'form.category': { el: 'Κατηγορία', en: 'Category' },
   'form.errorName': { el: 'Βάλε ένα όνομα για τη συνδρομή.', en: 'Give the subscription a name.' },
   'form.errorPrice': { el: 'Βάλε μια σωστή τιμή, π.χ. 9,99.', en: 'Enter a valid price, e.g. 9.99.' },
@@ -26,6 +37,7 @@ export const subscriptionStrings = {
     en: 'Something went wrong while saving. Please try again.',
   },
 
+  'edit.markPaid': { el: 'Το πλήρωσα · {day}', en: 'Mark as paid · {day}' },
   'edit.totalsLabel': { el: 'Έχεις δώσει συνολικά', en: 'Total spent so far' },
   'edit.totalsNone': {
     el: 'Δεν έχει χρεωθεί ακόμα μέσα από το Τσεπάκι.',

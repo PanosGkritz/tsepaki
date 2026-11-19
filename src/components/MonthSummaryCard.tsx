@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, Text, View } from 'react-native';
 import { fonts, radius, spacing } from '../constants/theme';
 import { formatEuro } from '../lib/format';
 import { createStyles } from '../lib/styles';
@@ -9,6 +10,7 @@ type MonthSummaryCardProps = {
   total: number;
   paid: number;
   subscriptionCount: number;
+  onPaidPress?: () => void;
 };
 
 export const MonthSummaryCard = ({
@@ -16,6 +18,7 @@ export const MonthSummaryCard = ({
   total,
   paid,
   subscriptionCount,
+  onPaidPress,
 }: MonthSummaryCardProps) => {
   const styles = useStyles();
   const { t, language } = usePreferences();
@@ -40,22 +43,49 @@ export const MonthSummaryCard = ({
       </View>
 
       <View style={styles.stats}>
-        <Stat label={t('summary.paid')} value={formatEuro(paid, language)} />
+        <Stat
+          label={t('summary.paid')}
+          value={formatEuro(paid, language)}
+          onPress={onPaidPress}
+          accessibilityLabel={t('summary.paidLabel')}
+        />
         <Stat label={t('summary.remaining')} value={formatEuro(remaining, language)} />
       </View>
     </View>
   );
 };
 
-type StatProps = { label: string; value: string };
+type StatProps = {
+  label: string;
+  value: string;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+};
 
-const Stat = ({ label, value }: StatProps) => {
+const Stat = ({ label, value, onPress, accessibilityLabel }: StatProps) => {
   const styles = useStyles();
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
+
+  const content = (
+    <>
+      <View style={styles.statHeader}>
+        <Text style={styles.statLabel}>{label}</Text>
+        {onPress && <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.85)" />}
+      </View>
       <Text style={styles.statValue}>{value}</Text>
-    </View>
+    </>
+  );
+
+  if (!onPress) return <View style={styles.stat}>{content}</View>;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [styles.stat, pressed && styles.statPressed]}
+    >
+      {content}
+    </Pressable>
   );
 };
 
@@ -96,6 +126,8 @@ const useStyles = createStyles((colors) => ({
     padding: 12,
     gap: 2,
   },
+  statPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  statHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statLabel: { color: colors.onAccent, opacity: 0.85, fontSize: 12, fontFamily: fonts.regular },
   statValue: {
     color: colors.onAccent,

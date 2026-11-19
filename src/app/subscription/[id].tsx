@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { findService } from '../../data/services';
-import { getSubscriptionTotals } from '../../db/charges';
+import { getSubscriptionTotals, markChargesPaid } from '../../db/charges';
 import {
   cancelSubscription,
   deleteSubscription,
@@ -13,13 +14,16 @@ import {
   updateSubscription,
 } from '../../db/subscriptions';
 import type { Language, Translate } from '../../i18n';
-import { parseIsoDate } from '../../lib/dates';
+import { daysUntil, formatChargeDay, parseIsoDate } from '../../lib/dates';
+import { notifyDataChanged } from '../../lib/events';
 import { formatEuro } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
 import { getMonthName, toAccusative } from '../../lib/stats';
 import { createStyles } from '../../lib/styles';
 import { usePreferences } from '../../providers/PreferencesProvider';
 import type { NewSubscription, Subscription } from '../../types/subscription';
+
+const EARLY_PAYMENT_DAYS = 3;
 
 type Totals = Awaited<ReturnType<typeof getSubscriptionTotals>>;
 
@@ -38,7 +42,7 @@ const describeTotals = (totals: Totals, t: Translate, language: Language) => {
 export default function EditSubscription() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { t, language } = usePreferences();
+  const { colors, t, language } = usePreferences();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -51,14 +55,23 @@ export default function EditSubscription() {
   if (!subscription) return <View style={styles.screen} />;
 
   const service = subscription.serviceId ? findService(subscription.serviceId) : undefined;
+  const daysToCharge = daysUntil(subscription.nextChargeDate);
+  const canMarkPaid =
+    subscription.paymentMode === 'manual' && daysToCharge <= EARLY_PAYMENT_DAYS;
 
   const finish = async () => {
     await syncReminders(db);
+    notifyDataChanged();
     router.back();
   };
 
   const handleSubmit = async (values: NewSubscription) => {
     await updateSubscription(db, subscription.id, values);
+    await finish();
+  };
+
+  const handleMarkPaid = async () => {
+    await markChargesPaid(db, [subscription.id], subscription.nextChargeDate);
     await finish();
   };
 
@@ -96,6 +109,21 @@ export default function EditSubscription() {
       onSubmit={handleSubmit}
       footer={
         <View style={styles.footer}>
+          {canMarkPaid && (
+            <Pressable
+              onPress={handleMarkPaid}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.paidButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.accentBright} />
+              <Text style={styles.paidText}>
+                {t('edit.markPaid', {
+                  day: formatChargeDay(subscription.nextChargeDate, language),
+                })}
+              </Text>
+            </Pressable>
+          )}
+
           {totals && (
             <View style={styles.totalsCard}>
               <Text style={styles.totalsLabel}>{t('edit.totalsLabel')}</Text>
@@ -130,6 +158,16 @@ export default function EditSubscription() {
 const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
   footer: { gap: spacing.md },
+  paidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  paidText: { color: colors.accentBright, fontSize: 15, fontFamily: fonts.semibold },
   totalsCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
