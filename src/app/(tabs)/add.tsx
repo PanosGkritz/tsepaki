@@ -7,6 +7,7 @@ import { ServiceCard } from '../../components/ServiceCard';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { getCategoryLabel } from '../../data/categories';
 import {
+  CATALOG_PRICES_AS_OF,
   SERVICE_FILTERS,
   getServiceName,
   services,
@@ -143,6 +144,9 @@ export default function Add() {
           <>
             <Text style={styles.sectionTitle}>{t('add.popular')}</Text>
             {renderSection('online', onlineServices)}
+            <Text style={styles.note}>
+              {t('add.pricesNote', { date: CATALOG_PRICES_AS_OF[language] })}
+            </Text>
           </>
         )}
 
@@ -216,6 +220,7 @@ const useStyles = createStyles((colors) => ({
     paddingHorizontal: spacing.md,
   },
   moreText: { color: colors.accentBright, fontSize: 14, fontFamily: fonts.medium },
+  note: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, lineHeight: 17 },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   footer: {
     paddingHorizontal: spacing.lg,

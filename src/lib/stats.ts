@@ -22,6 +22,8 @@ export const CATEGORY_COLORS: Record<string, string> = {
   gaming: '#3E63DD',
   ai: '#D97757',
   storage: '#12A594',
+  tools: '#8E4EC6',
+  delivery: '#F76B15',
   mobile: '#D6409F',
   tv: '#F5A35C',
   activities: '#E8590C',

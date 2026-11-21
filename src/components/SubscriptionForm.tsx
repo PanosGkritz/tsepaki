@@ -13,10 +13,19 @@ import {
 } from 'react-native';
 import { fonts, radius, spacing } from '../constants/theme';
 import { CATEGORIES, getCategoryLabel, isCategory, type Category } from '../data/categories';
-import { getServiceName, type ServiceTemplate } from '../data/services';
+import {
+  CATALOG_PRICES_AS_OF,
+  getDefaultPlan,
+  getPlanCycle,
+  getPlanPrice,
+  getServiceName,
+  type ServicePlan,
+  type ServiceTemplate,
+} from '../data/services';
 import { LOCALES, type Language, type StringKey } from '../i18n';
 import { pickColor } from '../lib/colors';
 import { formatFullDate, parseIsoDate, toIsoDate } from '../lib/dates';
+import { formatMoney } from '../lib/format';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import type {
@@ -44,8 +53,11 @@ const parsePrice = (text: string) => {
   return Number.isFinite(value) && value > 0 ? value : null;
 };
 
-const formatPriceInput = (price: number, language: Language) =>
-  language === 'el' ? String(price).replace('.', ',') : String(price);
+// 159.9 → «159,90». Τα ακέραια ποσά μένουν χωρίς δεκαδικά, π.χ. «25».
+const formatPriceInput = (price: number, language: Language) => {
+  const text = Number.isInteger(price) ? String(price) : price.toFixed(2);
+  return language === 'el' ? text.replace('.', ',') : text;
+};
 
 const initialCategory = (initial?: Subscription, service?: ServiceTemplate): Category => {
   if (initial && isCategory(initial.category)) return initial.category;
@@ -80,10 +92,14 @@ export const SubscriptionForm = ({
   const [name, setName] = useState(
     initial?.name ?? (service ? getServiceName(service, t) : ''),
   );
-  const [priceText, setPriceText] = useState(
-    initial ? formatPriceInput(initial.price, language) : '',
-  );
-  const [cycle, setCycle] = useState<BillingCycle>(initial?.cycle ?? 'monthly');
+  const defaultPlan = initial ? undefined : getDefaultPlan(service);
+  const defaultCycle = defaultPlan ? getPlanCycle(defaultPlan, 'monthly') : 'monthly';
+  const defaultPrice = defaultPlan ? getPlanPrice(defaultPlan, defaultCycle) : undefined;
+  const [priceText, setPriceText] = useState(() => {
+    if (initial) return formatPriceInput(initial.price, language);
+    return defaultPrice !== undefined ? formatPriceInput(defaultPrice, language) : '';
+  });
+  const [cycle, setCycle] = useState<BillingCycle>(initial?.cycle ?? defaultCycle);
   const [nextDate, setNextDate] = useState(
     initial ? parseIsoDate(initial.nextChargeDate) : new Date(),
   );
@@ -98,6 +114,23 @@ export const SubscriptionForm = ({
   const price = parsePrice(priceText);
   const trimmedName = name.trim();
   const color = service?.color ?? initial?.color ?? pickColor(trimmedName || '?');
+  const plans = service?.plans ?? [];
+  const selectedPlan = plans.find((plan) => getPlanPrice(plan, cycle) === price);
+
+  const selectPlan = (plan: ServicePlan) => {
+    const planCycle = getPlanCycle(plan, cycle);
+    const planPrice = getPlanPrice(plan, planCycle);
+    if (planPrice === undefined) return;
+    setCycle(planCycle);
+    setPriceText(formatPriceInput(planPrice, language));
+  };
+
+  // Αν έχει διαλέξει πακέτο, η αλλαγή συχνότητας φέρνει και την τιμή του πακέτου.
+  const changeCycle = (nextCycle: BillingCycle) => {
+    setCycle(nextCycle);
+    const nextPrice = selectedPlan ? getPlanPrice(selectedPlan, nextCycle) : undefined;
+    if (nextPrice !== undefined) setPriceText(formatPriceInput(nextPrice, language));
+  };
 
   const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
     setShowAndroidPicker(false);
@@ -177,6 +210,41 @@ export const SubscriptionForm = ({
           />
         </Field>
 
+        {plans.length > 1 && (
+          <Field label={t('form.plan')}>
+            <View style={styles.chips}>
+              {plans.map((plan) => {
+                const isActive = plan === selectedPlan;
+                const planCycle = getPlanCycle(plan, cycle);
+                const planPrice = getPlanPrice(plan, planCycle) ?? 0;
+                const suffix = t(planCycle === 'yearly' ? 'form.perYear' : 'form.perMonth');
+                return (
+                  <Pressable
+                    key={plan.name}
+                    onPress={() => selectPlan(plan)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    style={[styles.chip, isActive && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                      {`${plan.name} · ${formatMoney(planPrice, language)}${suffix}`}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.hint}>
+              {t('form.planHint', { date: CATALOG_PRICES_AS_OF[language] })}
+            </Text>
+          </Field>
+        )}
+
+        {plans.length === 1 && (
+          <Text style={styles.hint}>
+            {t('form.planHint', { date: CATALOG_PRICES_AS_OF[language] })}
+          </Text>
+        )}
+
         <Field label={t('form.price')}>
           <View style={styles.priceRow}>
             <TextInput
@@ -193,7 +261,7 @@ export const SubscriptionForm = ({
         </Field>
 
         <Field label={t('form.cycle')}>
-          <Segment options={CYCLES} value={cycle} onChange={setCycle} />
+          <Segment options={CYCLES} value={cycle} onChange={changeCycle} />
         </Field>
 
         <Field label={t('form.payment')}>

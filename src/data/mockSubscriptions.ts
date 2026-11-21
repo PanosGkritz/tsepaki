@@ -4,7 +4,7 @@ export const mockSubscriptions: Subscription[] = [
   {
     id: 'netflix',
     name: 'Netflix',
-    price: 13.99,
+    price: 12.49,
     cycle: 'monthly',
     nextChargeDate: '2026-11-19',
     color: '#E50914',
@@ -14,7 +14,7 @@ export const mockSubscriptions: Subscription[] = [
   {
     id: 'spotify',
     name: 'Spotify',
-    price: 11.99,
+    price: 8.99,
     cycle: 'monthly',
     nextChargeDate: '2026-11-22',
     color: '#1DB954',
@@ -34,7 +34,7 @@ export const mockSubscriptions: Subscription[] = [
   {
     id: 'xbox',
     name: 'Xbox Game Pass',
-    price: 14.99,
+    price: 12.99,
     cycle: 'monthly',
     nextChargeDate: '2026-11-28',
     color: '#107C10',

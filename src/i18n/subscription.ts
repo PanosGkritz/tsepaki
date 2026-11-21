@@ -14,6 +14,13 @@ export const subscriptionStrings = {
   'form.nameLabel': { el: 'Όνομα συνδρομής', en: 'Subscription name' },
   'form.price': { el: 'Τιμή', en: 'Price' },
   'form.priceLabel': { el: 'Τιμή σε ευρώ', en: 'Price in euros' },
+  'form.plan': { el: 'Πακέτο', en: 'Plan' },
+  'form.planHint': {
+    el: 'Τιμές {date}. Αν πληρώνεις άλλο ποσό, άλλαξέ το από κάτω.',
+    en: 'Prices as of {date}. If you pay a different amount, change it below.',
+  },
+  'form.perMonth': { el: '/μήνα', en: '/mo' },
+  'form.perYear': { el: '/χρόνο', en: '/yr' },
   'form.cycle': { el: 'Συχνότητα', en: 'Billing' },
   'form.monthly': { el: 'Μηνιαία', en: 'Monthly' },
   'form.yearly': { el: 'Ετήσια', en: 'Yearly' },
