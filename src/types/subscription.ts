@@ -13,6 +13,7 @@ export type Subscription = {
   paymentMode: PaymentMode;
   serviceId?: string;
   domain?: string;
+  card?: string;
 };
 
 export type NewSubscription = Omit<Subscription, 'id'>;

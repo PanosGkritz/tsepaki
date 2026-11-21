@@ -51,7 +51,10 @@ export const SubscriptionRow = ({
         <Text style={styles.name} numberOfLines={1}>
           {subscription.name}
         </Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {subtitle}
+          {subscription.card ? ` · ${subscription.card}` : ''}
+        </Text>
       </View>
 
       <View style={styles.side}>

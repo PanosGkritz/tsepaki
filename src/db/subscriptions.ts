@@ -17,6 +17,7 @@ type SubscriptionRow = {
   service_id: string | null;
   domain: string | null;
   payment_mode: string;
+  card: string | null;
 };
 
 const toCycle = (value: string): BillingCycle => (value === 'yearly' ? 'yearly' : 'monthly');
@@ -35,6 +36,7 @@ const toSubscription = (row: SubscriptionRow): Subscription => ({
   paymentMode: toPaymentMode(row.payment_mode),
   serviceId: row.service_id ?? undefined,
   domain: row.domain ?? undefined,
+  card: row.card ?? undefined,
 });
 
 const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -56,8 +58,9 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
 
   await db.runAsync(
     `INSERT INTO subscriptions
-       (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain, payment_mode)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain,
+        payment_mode, card)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -68,6 +71,7 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
     subscription.serviceId ?? null,
     subscription.domain ?? null,
     subscription.paymentMode,
+    subscription.card ?? null,
   );
 
   return id;
@@ -81,7 +85,7 @@ export const updateSubscription = async (
   await db.runAsync(
     `UPDATE subscriptions
      SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
-         category = ?, service_id = ?, domain = ?, payment_mode = ?
+         category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?
      WHERE id = ?`,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -92,8 +96,20 @@ export const updateSubscription = async (
     subscription.serviceId ?? null,
     subscription.domain ?? null,
     subscription.paymentMode,
+    subscription.card ?? null,
     id,
   );
+};
+
+// Οι κάρτες που έχει ήδη γράψει ο χρήστης, για γρήγορη επιλογή στη φόρμα.
+export const getCardLabels = async (db: SQLiteDatabase) => {
+  const rows = await db.getAllAsync<{ card: string }>(
+    `SELECT card FROM subscriptions
+     WHERE card IS NOT NULL AND card <> ''
+     GROUP BY card
+     ORDER BY COUNT(*) DESC, card ASC`,
+  );
+  return rows.map((row) => row.card);
 };
 
 export const cancelSubscription = async (db: SQLiteDatabase, id: string) => {

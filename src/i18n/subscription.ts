@@ -36,6 +36,17 @@ export const subscriptionStrings = {
     el: 'Την πληρώνεις εσύ, π.χ. με μετρητά ή μεταφορά. Πατάς «Πλήρωσα» και σου θυμίζω αν την ξεχάσεις.',
     en: 'You pay it yourself, e.g. in cash or by transfer. Tap “Paid” and I’ll remind you if you forget.',
   },
+  'form.card': { el: 'Κάρτα (προαιρετικό)', en: 'Card (optional)' },
+  'form.cardPlaceholder': { el: 'π.χ. Visa ••4417 ή Revolut', en: 'e.g. Visa ••4417 or Revolut' },
+  'form.cardLabel': { el: 'Με ποια κάρτα πληρώνεται', en: 'Which card pays for it' },
+  'form.cardHint': {
+    el: 'Ένα όνομα ή τα 4 τελευταία ψηφία, για να ξέρεις από πού φεύγουν τα λεφτά. Ποτέ ολόκληρο τον αριθμό.',
+    en: 'A nickname or the last 4 digits, so you know where the money goes. Never the full number.',
+  },
+  'form.errorCard': {
+    el: 'Γράψε μόνο τα 4 τελευταία ψηφία της κάρτας, όχι ολόκληρο τον αριθμό.',
+    en: 'Only enter the last 4 digits of the card, not the full number.',
+  },
   'form.category': { el: 'Κατηγορία', en: 'Category' },
   'form.errorName': { el: 'Βάλε ένα όνομα για τη συνδρομή.', en: 'Give the subscription a name.' },
   'form.errorPrice': { el: 'Βάλε μια σωστή τιμή, π.χ. 9,99.', en: 'Enter a valid price, e.g. 9.99.' },

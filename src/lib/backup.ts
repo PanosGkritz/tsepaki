@@ -6,7 +6,7 @@ import { toIsoDate } from './dates';
 
 const BACKUP_APP = 'tsepaki';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 // Το κλείδωμα αφορά τη συγκεκριμένη συσκευή, οπότε δεν μεταφέρεται.
 const DEVICE_ONLY_SETTINGS = ['appLock'];
@@ -24,6 +24,7 @@ type SubscriptionBackupRow = {
   domain: string | null;
   cancelled_at: string | null;
   payment_mode: string;
+  card: string | null;
 };
 
 type ChargeBackupRow = {
@@ -58,7 +59,7 @@ export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
   const [subscriptions, charges, settings] = await Promise.all([
     db.getAllAsync<SubscriptionBackupRow>(
       `SELECT id, name, price_cents, cycle, next_charge_date, color, category, created_at,
-              service_id, domain, cancelled_at, payment_mode
+              service_id, domain, cancelled_at, payment_mode, card
        FROM subscriptions`,
     ),
     db.getAllAsync<ChargeBackupRow>(
@@ -115,8 +116,8 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
     for (const row of backup.subscriptions) {
       await db.runAsync(
         `INSERT INTO subscriptions (id, name, price_cents, cycle, next_charge_date, color, category,
-                                    created_at, service_id, domain, cancelled_at, payment_mode)
-         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?)`,
+                                    created_at, service_id, domain, cancelled_at, payment_mode, card)
+         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?, ?)`,
         row.id,
         row.name,
         row.price_cents,
@@ -129,6 +130,7 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
         row.domain,
         row.cancelled_at,
         row.payment_mode,
+        row.card,
       );
     }
 
@@ -177,6 +179,7 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     domain,
     cancelled_at,
     payment_mode,
+    card,
   } = value;
 
   if (
@@ -190,7 +193,8 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     !isOptionalString(created_at) ||
     !isOptionalString(service_id) ||
     !isOptionalString(domain) ||
-    !isOptionalString(cancelled_at)
+    !isOptionalString(cancelled_at) ||
+    !isOptionalString(card)
   ) {
     return null;
   }
@@ -208,6 +212,7 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     domain: domain ?? null,
     cancelled_at: cancelled_at ?? null,
     payment_mode: payment_mode === 'manual' ? 'manual' : 'auto',
+    card: card ?? null,
   };
 };
 

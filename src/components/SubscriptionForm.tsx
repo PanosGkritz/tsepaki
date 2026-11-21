@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +23,7 @@ import {
   type ServicePlan,
   type ServiceTemplate,
 } from '../data/services';
+import { getCardLabels } from '../db/subscriptions';
 import { LOCALES, type Language, type StringKey } from '../i18n';
 import { pickColor } from '../lib/colors';
 import { formatFullDate, parseIsoDate, toIsoDate } from '../lib/dates';
@@ -47,6 +49,11 @@ const PAYMENT_MODES: SegmentOption<PaymentMode>[] = [
   { value: 'auto', key: 'form.paymentAuto' },
   { value: 'manual', key: 'form.paymentManual' },
 ];
+
+const CARD_MAX_LENGTH = 30;
+
+// Ολόκληρος αριθμός κάρτας δεν αποθηκεύεται ποτέ: 7+ συνεχόμενα ψηφία (με κενά ή παύλες) απορρίπτονται.
+const looksLikeCardNumber = (text: string) => /\d{7,}/.test(text.replace(/[\s-]/g, ''));
 
 const parsePrice = (text: string) => {
   const value = Number(text.replace(',', '.'));
@@ -88,6 +95,7 @@ export const SubscriptionForm = ({
   footer,
 }: SubscriptionFormProps) => {
   const styles = useStyles();
+  const db = useSQLiteContext();
   const { colors, isDark, t, language } = usePreferences();
   const [name, setName] = useState(
     initial?.name ?? (service ? getServiceName(service, t) : ''),
@@ -107,11 +115,18 @@ export const SubscriptionForm = ({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(
     initialPaymentMode(initial, service),
   );
+  const [card, setCard] = useState(initial?.card ?? '');
+  const [savedCards, setSavedCards] = useState<string[]>([]);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    getCardLabels(db).then(setSavedCards);
+  }, [db]);
+
   const price = parsePrice(priceText);
+  const trimmedCard = card.trim();
   const trimmedName = name.trim();
   const color = service?.color ?? initial?.color ?? pickColor(trimmedName || '?');
   const plans = service?.plans ?? [];
@@ -146,6 +161,10 @@ export const SubscriptionForm = ({
       setError('form.errorPrice');
       return;
     }
+    if (looksLikeCardNumber(trimmedCard)) {
+      setError('form.errorCard');
+      return;
+    }
 
     setError(null);
     setSaving(true);
@@ -161,6 +180,7 @@ export const SubscriptionForm = ({
         paymentMode,
         serviceId: service?.id ?? initial?.serviceId,
         domain: service?.domain ?? initial?.domain,
+        card: trimmedCard || undefined,
       });
     } catch {
       setError('form.errorSave');
@@ -297,6 +317,38 @@ export const SubscriptionForm = ({
           {showAndroidPicker && (
             <DateTimePicker value={nextDate} mode="date" onChange={onDateChange} />
           )}
+        </Field>
+
+        <Field label={t('form.card')}>
+          <TextInput
+            value={card}
+            onChangeText={setCard}
+            placeholder={t('form.cardPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            maxLength={CARD_MAX_LENGTH}
+            autoCorrect={false}
+            style={styles.input}
+            accessibilityLabel={t('form.cardLabel')}
+          />
+          {savedCards.length > 0 && (
+            <View style={styles.chips}>
+              {savedCards.map((item) => {
+                const isActive = item === trimmedCard;
+                return (
+                  <Pressable
+                    key={item}
+                    onPress={() => setCard(isActive ? '' : item)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    style={[styles.chip, isActive && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+          <Text style={styles.hint}>{t('form.cardHint')}</Text>
         </Field>
 
         <Field label={t('form.category')}>
