@@ -77,6 +77,30 @@ export const settingsStrings = {
   'settings.rate': { el: 'Βαθμολόγησέ μας', en: 'Rate us' },
 
   'settings.data': { el: 'Δεδομένα', en: 'Data' },
+  'settings.exportBackup': { el: 'Εξαγωγή αντιγράφου', en: 'Export a backup' },
+  'settings.importBackup': { el: 'Επαναφορά από αντίγραφο', en: 'Restore from a backup' },
+  'settings.backupHint': {
+    el: 'Κράτα το αρχείο στο Drive, στα Αρχεία ή στείλ’ το στον εαυτό σου. Έτσι δεν χάνεις τίποτα αν αλλάξεις κινητό.',
+    en: 'Keep the file in Drive or Files, or send it to yourself, so nothing is lost if you change phones.',
+  },
+  'settings.backupShareTitle': { el: 'Αντίγραφο του Τσεπακιού', en: 'Tsepaki backup' },
+  'settings.restoreTitle': { el: 'Επαναφορά αντιγράφου', en: 'Restore backup' },
+  'settings.restoreMessage': {
+    el: 'Το αντίγραφο από {date} έχει {subscriptions} ενεργές συνδρομές και {charges} χρεώσεις. Θα αντικαταστήσει ό,τι έχεις τώρα στο Τσεπάκι.',
+    en: 'The backup from {date} has {subscriptions} active subscriptions and {charges} charges. It will replace everything currently in Tsepaki.',
+  },
+  'settings.restoreConfirm': { el: 'Επαναφορά', en: 'Restore' },
+  'settings.restoreDone': { el: 'Έγινε η επαναφορά', en: 'Backup restored' },
+  'settings.backupInvalidTitle': { el: 'Δεν γίνεται επαναφορά', en: 'Can’t restore' },
+  'settings.backupInvalid': {
+    el: 'Αυτό δεν είναι αντίγραφο του Τσεπακιού. Διάλεξε το αρχείο .json που έβγαλες με την «Εξαγωγή αντιγράφου».',
+    en: 'This isn’t a Tsepaki backup. Pick the .json file you saved with “Export a backup”.',
+  },
+  'settings.backupNewer': {
+    el: 'Το αντίγραφο είναι από νεότερη έκδοση. Ενημέρωσε πρώτα την εφαρμογή.',
+    en: 'This backup is from a newer version. Update the app first.',
+  },
+  'settings.backupFailed': { el: 'Κάτι πήγε στραβά, δοκίμασε ξανά', en: 'Something went wrong, try again' },
   'settings.deleteAll': { el: 'Διαγραφή όλων των δεδομένων', en: 'Delete all data' },
   'settings.deleteHint': {
     el: 'Σβήνει όλες τις συνδρομές και το ιστορικό σου.',

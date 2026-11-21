@@ -20,7 +20,16 @@ import { deleteAllData } from '../../db/maintenance';
 import { DEFAULT_SETTINGS, getSettings, saveSetting, type AppSettings } from '../../db/settings';
 import { getSubscriptions } from '../../db/subscriptions';
 import type { Language, StringKey } from '../../i18n';
+import {
+  InvalidBackupError,
+  NewerBackupError,
+  exportBackup,
+  pickBackup,
+  restoreBackup,
+  type BackupSummary,
+} from '../../lib/backup';
 import { formatChargeDay, toIsoDate } from '../../lib/dates';
+import { notifyDataChanged } from '../../lib/events';
 import { authenticate, canUseLock } from '../../lib/lock';
 import {
   getPermissionState,
@@ -72,8 +81,17 @@ const formatReminder = (reminder: Reminder, language: Language) =>
 export default function Settings() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, themeMode, language, appLock, setThemeMode, setLanguage, setAppLock } =
-    usePreferences();
+  const {
+    colors,
+    t,
+    themeMode,
+    language,
+    appLock,
+    setThemeMode,
+    setLanguage,
+    setHideAmounts,
+    setAppLock,
+  } = usePreferences();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [nameDraft, setNameDraft] = useState('');
   const [permission, setPermission] = useState<PermissionState>('undetermined');
@@ -182,6 +200,67 @@ export default function Settings() {
           ]),
       },
     ]);
+
+  const handleExport = async () => {
+    try {
+      await exportBackup(db, t('settings.backupShareTitle'));
+    } catch {
+      Alert.alert(t('settings.backupFailed'));
+    }
+  };
+
+  const restore = async ({ backup }: BackupSummary) => {
+    try {
+      await restoreBackup(db, backup);
+      const restored = await getSettings(db);
+      await setThemeMode(restored.themeMode);
+      if (restored.language) await setLanguage(restored.language);
+      await setHideAmounts(restored.hideAmounts);
+      await syncReminders(db);
+      notifyDataChanged();
+      const loadedSettings = await refresh();
+      setNameDraft(loadedSettings.userName);
+      Alert.alert(t('settings.restoreDone'));
+    } catch {
+      Alert.alert(t('settings.backupFailed'));
+    }
+  };
+
+  const handleImport = async () => {
+    let summary: BackupSummary | null;
+    try {
+      summary = await pickBackup();
+    } catch (error) {
+      if (error instanceof NewerBackupError) {
+        Alert.alert(t('settings.backupInvalidTitle'), t('settings.backupNewer'));
+      } else if (error instanceof InvalidBackupError) {
+        Alert.alert(t('settings.backupInvalidTitle'), t('settings.backupInvalid'));
+      } else {
+        Alert.alert(t('settings.backupFailed'));
+      }
+      return;
+    }
+    if (!summary) return;
+
+    const exportedAt = new Date(summary.backup.exportedAt);
+    const date = Number.isNaN(exportedAt.getTime())
+      ? '–'
+      : `${exportedAt.getDate()}/${exportedAt.getMonth() + 1}/${exportedAt.getFullYear()}`;
+    const chosen = summary;
+
+    Alert.alert(
+      t('settings.restoreTitle'),
+      t('settings.restoreMessage', {
+        date,
+        subscriptions: chosen.activeCount,
+        charges: chosen.chargeCount,
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.restoreConfirm'), style: 'destructive', onPress: () => restore(chosen) },
+      ],
+    );
+  };
 
   const openFeedback = () =>
     Linking.openURL(
@@ -342,6 +421,24 @@ export default function Settings() {
 
       <Section title={t('settings.data')}>
         <Pressable
+          onPress={handleExport}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.secondaryText}>{t('settings.exportBackup')}</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleImport}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.secondaryText}>{t('settings.importBackup')}</Text>
+        </Pressable>
+        <Text style={styles.hint}>{t('settings.backupHint')}</Text>
+
+        <View style={styles.divider} />
+
+        <Pressable
           onPress={confirmDeleteAll}
           accessibilityRole="button"
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
@@ -497,6 +594,7 @@ const useStyles = createStyles((colors) => ({
   },
   pressed: { opacity: 0.7 },
   buttonText: { color: colors.onAccent, fontSize: 15, fontFamily: fonts.semibold },
+  secondaryText: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   deleteText: { color: colors.warning, fontSize: 15, fontFamily: fonts.medium },
   link: { color: colors.accentBright, fontSize: 14, fontFamily: fonts.medium },
   chevron: { color: colors.textMuted, fontSize: 22, fontFamily: fonts.regular },
