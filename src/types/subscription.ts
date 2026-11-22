@@ -14,6 +14,7 @@ export type Subscription = {
   serviceId?: string;
   domain?: string;
   card?: string;
+  isTrial?: boolean;
 };
 
 export type NewSubscription = Omit<Subscription, 'id'>;

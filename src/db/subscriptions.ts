@@ -18,6 +18,7 @@ type SubscriptionRow = {
   domain: string | null;
   payment_mode: string;
   card: string | null;
+  is_trial: number;
 };
 
 const toCycle = (value: string): BillingCycle => (value === 'yearly' ? 'yearly' : 'monthly');
@@ -37,6 +38,7 @@ const toSubscription = (row: SubscriptionRow): Subscription => ({
   serviceId: row.service_id ?? undefined,
   domain: row.domain ?? undefined,
   card: row.card ?? undefined,
+  isTrial: row.is_trial === 1,
 });
 
 const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -59,8 +61,8 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
   await db.runAsync(
     `INSERT INTO subscriptions
        (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain,
-        payment_mode, card)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        payment_mode, card, is_trial)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -72,6 +74,7 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
     subscription.domain ?? null,
     subscription.paymentMode,
     subscription.card ?? null,
+    subscription.isTrial ? 1 : 0,
   );
 
   return id;
@@ -85,7 +88,7 @@ export const updateSubscription = async (
   await db.runAsync(
     `UPDATE subscriptions
      SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
-         category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?
+         category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?, is_trial = ?
      WHERE id = ?`,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -97,6 +100,7 @@ export const updateSubscription = async (
     subscription.domain ?? null,
     subscription.paymentMode,
     subscription.card ?? null,
+    subscription.isTrial ? 1 : 0,
     id,
   );
 };

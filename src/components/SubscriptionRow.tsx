@@ -24,7 +24,7 @@ export const SubscriptionRow = ({
   hideAmount = false,
 }: SubscriptionRowProps) => {
   const styles = useStyles();
-  const { language } = usePreferences();
+  const { language, t } = usePreferences();
   const price = formatMoney(subscription.price, language, hideAmount);
 
   return (
@@ -48,9 +48,16 @@ export const SubscriptionRow = ({
       />
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {subscription.name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {subscription.name}
+          </Text>
+          {subscription.isTrial && (
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialText}>{t('form.trialBadge')}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {subtitle}
           {subscription.card ? ` · ${subscription.card}` : ''}
@@ -78,7 +85,15 @@ const useStyles = createStyles((colors) => ({
   },
   pressed: { opacity: 0.6 },
   info: { flex: 1, gap: 2 },
-  name: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { flexShrink: 1, color: colors.text, fontSize: 15, fontFamily: fonts.medium },
+  trialBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceRaised,
+  },
+  trialText: { color: colors.accentBright, fontSize: 11, fontFamily: fonts.medium },
   subtitle: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   side: { alignItems: 'flex-end', gap: 6 },
   price: {

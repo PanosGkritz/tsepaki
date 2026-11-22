@@ -22,6 +22,9 @@ type Templates = {
   manualTomorrow: string[];
   manualOnDay: string[];
   overdue: string;
+  trialToday: string;
+  trialTomorrow: string;
+  trialOnDay: string;
   categoryTomorrow: Record<string, string>;
   yearly: string;
   groupToday: string;
@@ -57,6 +60,10 @@ const TEMPLATES: Record<Language, Templates> = {
     manualTomorrow: ['Αύριο πληρώνεις {amount}.', 'Μην το ξεχάσεις, αύριο πληρώνεις {amount}.'],
     manualOnDay: ['{day} πληρώνεις {amount}.'],
     overdue: 'Μήπως ξέχασες να το πληρώσεις; Ήταν {amount} στις {date}.',
+    trialToday: 'Σήμερα λήγει η δωρεάν δοκιμή και σού τραβάει {amount}.',
+    trialTomorrow:
+      'Αύριο λήγει η δωρεάν δοκιμή. Μετά σού τραβάει {amount}. Αν δεν τη θες, ακύρωσέ τη σήμερα.',
+    trialOnDay: '{day} λήγει η δωρεάν δοκιμή. Μετά σού τραβάει {amount}.',
     categoryTomorrow: {
       streaming: 'Αύριο {amount} για να μη σου κόψει τη σειρά στη μέση.',
       music: 'Αύριο {amount} για να συνεχίσει να παίζει η μουσική.',
@@ -99,6 +106,10 @@ const TEMPLATES: Record<Language, Templates> = {
     manualTomorrow: ['Payment due tomorrow: {amount}.', 'Don’t forget, you pay {amount} tomorrow.'],
     manualOnDay: ['{amount} to pay {day}.'],
     overdue: 'Forgot to pay? {amount} was due on {date}.',
+    trialToday: 'Your free trial ends today and {amount} will be charged.',
+    trialTomorrow:
+      'Your free trial ends tomorrow. After that you’ll be charged {amount}. Cancel today if you don’t want it.',
+    trialOnDay: 'Your free trial ends {day}. After that you’ll be charged {amount}.',
     categoryTomorrow: {
       streaming: 'Tomorrow {amount}, so your show doesn’t stop mid-season.',
       music: 'Tomorrow {amount} to keep the music playing.',
@@ -119,6 +130,8 @@ const TEMPLATES: Record<Language, Templates> = {
 };
 
 export const YEARLY_EXTRA_DAYS = 7;
+// Για τις δωρεάν δοκιμές η υπενθύμιση της προηγούμενης μέρας μπαίνει πάντα.
+const TRIAL_REQUIRED_DAY = 1;
 const MAX_REMINDERS = 60;
 
 export const REMINDER_DAY_OPTIONS = [{ value: 3 }, { value: 2 }, { value: 1 }, { value: 0 }];
@@ -258,6 +271,35 @@ const buildYearlyReminders = (
       body: fill(TEMPLATES[language].yearly, formatEuro(subscription.price, language)),
     }));
 
+const buildTrialReminders = (
+  subscriptions: Subscription[],
+  settings: ReminderSettings,
+  language: Language,
+): Reminder[] => {
+  const templates = TEMPLATES[language];
+  const days = [...new Set([...settings.reminderDays, TRIAL_REQUIRED_DAY])];
+
+  return subscriptions.flatMap((subscription) =>
+    days.map((daysBefore) => {
+      const amount = formatEuro(subscription.price, language);
+      const day = templates.weekdayOn[parseIsoDate(subscription.nextChargeDate).getDay()];
+      const template =
+        daysBefore === 0
+          ? templates.trialToday
+          : daysBefore === 1
+            ? templates.trialTomorrow
+            : templates.trialOnDay;
+
+      return {
+        id: `${subscription.id}-trial-${daysBefore}`,
+        date: buildReminderDate(subscription.nextChargeDate, daysBefore, settings.reminderHour),
+        title: subscription.name,
+        body: capitalize(fill(template, amount, day)),
+      };
+    }),
+  );
+};
+
 const nextReminderTime = (hour: number, now: Date) => {
   const date = new Date(now);
   date.setHours(hour, 0, 0, 0);
@@ -298,20 +340,23 @@ export const buildReminders = (
   now = new Date(),
 ): Reminder[] => {
   const language = resolveLanguage(settings);
+  const trials = subscriptions.filter((subscription) => subscription.isTrial);
+  const regular = subscriptions.filter((subscription) => !subscription.isTrial);
 
-  const grouped = [...groupByChargeDate(subscriptions).entries()].flatMap(([chargeDate, group]) =>
+  const grouped = [...groupByChargeDate(regular).entries()].flatMap(([chargeDate, group]) =>
     settings.reminderDays.map((daysBefore) =>
       buildGroupReminder(chargeDate, group, daysBefore, settings.reminderHour, language),
     ),
   );
 
   const yearly = settings.yearlyReminder
-    ? buildYearlyReminders(subscriptions, settings.reminderHour, language)
+    ? buildYearlyReminders(regular, settings.reminderHour, language)
     : [];
 
-  const overdue = buildOverdueReminders(subscriptions, settings.reminderHour, language, now);
+  const overdue = buildOverdueReminders(regular, settings.reminderHour, language, now);
+  const trialReminders = buildTrialReminders(trials, settings, language);
 
-  return [...overdue, ...grouped, ...yearly]
+  return [...trialReminders, ...overdue, ...grouped, ...yearly]
     .filter((reminder) => reminder.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, MAX_REMINDERS);

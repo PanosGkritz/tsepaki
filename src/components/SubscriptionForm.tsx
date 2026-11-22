@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -115,6 +116,7 @@ export const SubscriptionForm = ({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(
     initialPaymentMode(initial, service),
   );
+  const [isTrial, setIsTrial] = useState(initial?.isTrial ?? false);
   const [card, setCard] = useState(initial?.card ?? '');
   const [savedCards, setSavedCards] = useState<string[]>([]);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
@@ -181,6 +183,7 @@ export const SubscriptionForm = ({
         serviceId: service?.id ?? initial?.serviceId,
         domain: service?.domain ?? initial?.domain,
         card: trimmedCard || undefined,
+        isTrial,
       });
     } catch {
       setError('form.errorSave');
@@ -291,7 +294,21 @@ export const SubscriptionForm = ({
           </Text>
         </Field>
 
-        <Field label={t('form.nextCharge')}>
+        <View style={styles.trialRow}>
+          <View style={styles.trialInfo}>
+            <Text style={styles.trialLabel}>{t('form.trial')}</Text>
+            <Text style={styles.hint}>{t('form.trialHint')}</Text>
+          </View>
+          <Switch
+            value={isTrial}
+            onValueChange={setIsTrial}
+            trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel={t('form.trial')}
+          />
+        </View>
+
+        <Field label={t(isTrial ? 'form.trialEnds' : 'form.nextCharge')}>
           {Platform.OS === 'ios' ? (
             <View style={styles.iosDateRow}>
               <Text style={styles.dateText}>{formatFullDate(nextDate, language)}</Text>
@@ -483,6 +500,9 @@ const useStyles = createStyles((colors) => ({
   segmentText: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.medium },
   segmentTextActive: { color: colors.text },
   hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
+  trialRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  trialInfo: { flex: 1, gap: 4 },
+  trialLabel: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   iosDateRow: {
     flexDirection: 'row',
     alignItems: 'center',

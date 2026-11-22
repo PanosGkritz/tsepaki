@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mockSubscriptions } from '../data/mockSubscriptions';
 
-const DATABASE_VERSION = 9;
+const DATABASE_VERSION = 10;
 
 // Η βάση για εγγραφές οθόνης (src/app/_layout.tsx → databaseName="tsepaki-demo.db")
 // ξεκινάει με παραδείγματα. Η κανονική βάση ξεκινάει πάντα άδεια.
@@ -121,6 +121,14 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     await db.execAsync(`ALTER TABLE subscriptions ADD COLUMN card TEXT;`);
 
     currentVersion = 9;
+  }
+
+  if (currentVersion === 9) {
+    await db.execAsync(
+      `ALTER TABLE subscriptions ADD COLUMN is_trial INTEGER NOT NULL DEFAULT 0;`,
+    );
+
+    currentVersion = 10;
   }
 
   if (isFreshDatabase && db.databasePath.endsWith(DEMO_DATABASE)) {

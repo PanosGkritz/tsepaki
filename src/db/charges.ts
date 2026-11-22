@@ -52,6 +52,11 @@ export const processDueCharges = async (db: SQLiteDatabase, today = new Date()) 
   const subscriptions = await getSubscriptions(db);
 
   for (const subscription of subscriptions) {
+    // Η δωρεάν δοκιμή που έληξε χωρίς ακύρωση γίνεται κανονική συνδρομή.
+    if (subscription.isTrial && subscription.nextChargeDate < todayIso) {
+      await db.runAsync('UPDATE subscriptions SET is_trial = 0 WHERE id = ?', subscription.id);
+    }
+
     // Όσες πληρώνει ο χρήστης μόνος του καταγράφονται μόνο όταν πατήσει «Πλήρωσα».
     if (subscription.paymentMode === 'manual') continue;
 

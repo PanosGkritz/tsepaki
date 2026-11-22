@@ -36,6 +36,13 @@ export const subscriptionStrings = {
     el: 'Την πληρώνεις εσύ, π.χ. με μετρητά ή μεταφορά. Πατάς «Πλήρωσα» και σου θυμίζω αν την ξεχάσεις.',
     en: 'You pay it yourself, e.g. in cash or by transfer. Tap “Paid” and I’ll remind you if you forget.',
   },
+  'form.trial': { el: 'Είναι δωρεάν δοκιμή', en: 'It’s a free trial' },
+  'form.trialHint': {
+    el: 'Θα σου θυμίσουμε πριν λήξει, για να την ακυρώσεις αν δεν τη θες.',
+    en: 'We’ll remind you before it ends, so you can cancel if you don’t want it.',
+  },
+  'form.trialEnds': { el: 'Λήγει η δοκιμή', en: 'Trial ends' },
+  'form.trialBadge': { el: 'Δοκιμή', en: 'Trial' },
   'form.added': { el: 'Προστέθηκε!', en: 'Added!' },
   'form.card': { el: 'Κάρτα (προαιρετικό)', en: 'Card (optional)' },
   'form.cardPlaceholder': { el: 'π.χ. Visa ••4417 ή Revolut', en: 'e.g. Visa ••4417 or Revolut' },
