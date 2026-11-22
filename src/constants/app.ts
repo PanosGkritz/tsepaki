@@ -1,4 +1,4 @@
-export const FEEDBACK_EMAIL = '';
+export const FEEDBACK_EMAIL = 'tsepaki.app@gmail.com';
 
 export const PLAY_STORE_URL = '';
 

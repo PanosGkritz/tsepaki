@@ -15,9 +15,10 @@ export const homeStrings = {
   'upcoming.title': { el: 'Επόμενες χρεώσεις', en: 'Upcoming charges' },
   'upcoming.all': { el: 'Όλες', en: 'See all' },
   'upcoming.empty': {
-    el: 'Δεν έχεις ακόμα συνδρομές. Πάτα το + για να προσθέσεις.',
-    en: 'You don’t have any subscriptions yet. Tap + to add one.',
+    el: 'Δεν έχεις ακόμα συνδρομές. Πρόσθεσε την πρώτη και θα σου θυμίζουμε πριν από κάθε χρέωση.',
+    en: 'No subscriptions yet. Add your first one and we’ll remind you before every charge.',
   },
+  'upcoming.emptyAction': { el: 'Πρόσθεσε συνδρομή', en: 'Add a subscription' },
   'upcoming.overdue': { el: 'εκκρεμεί', en: 'overdue' },
   'upcoming.swipe': { el: 'Σύρε για τις υπόλοιπες', en: 'Swipe for more' },
   'upcoming.markPaid': { el: 'Πλήρωσα', en: 'Paid' },

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { fonts, radius, spacing } from '../constants/theme';
 import { formatMoney } from '../lib/format';
 import { createStyles } from '../lib/styles';
@@ -54,7 +55,7 @@ export const MonthSummaryCard = ({
       </View>
 
       <View style={styles.totalBlock}>
-        <Text style={styles.total}>{money(total)}</Text>
+        <AmountText style={styles.total} value={money(total)} />
         <Text style={styles.caption}>{t('summary.caption')}</Text>
       </View>
 
@@ -70,6 +71,20 @@ export const MonthSummaryCard = ({
     </View>
   );
 };
+
+// Όταν αλλάζει ένα ποσό (π.χ. μετά από «Πλήρωσα» ή με το ματάκι), το νέο εμφανίζεται με απαλό fade.
+const AMOUNT_FADE = FadeIn.duration(260);
+
+type AmountTextProps = {
+  value: string;
+  style: React.ComponentProps<typeof Text>['style'];
+};
+
+const AmountText = ({ value, style }: AmountTextProps) => (
+  <Animated.Text key={value} entering={AMOUNT_FADE} style={style}>
+    {value}
+  </Animated.Text>
+);
 
 type StatProps = {
   label: string;
@@ -87,7 +102,7 @@ const Stat = ({ label, value, onPress, accessibilityLabel }: StatProps) => {
         <Text style={styles.statLabel}>{label}</Text>
         {onPress && <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.85)" />}
       </View>
-      <Text style={styles.statValue}>{value}</Text>
+      <AmountText style={styles.statValue} value={value} />
     </>
   );
 

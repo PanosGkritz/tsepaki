@@ -36,6 +36,7 @@ export const subscriptionStrings = {
     el: 'Την πληρώνεις εσύ, π.χ. με μετρητά ή μεταφορά. Πατάς «Πλήρωσα» και σου θυμίζω αν την ξεχάσεις.',
     en: 'You pay it yourself, e.g. in cash or by transfer. Tap “Paid” and I’ll remind you if you forget.',
   },
+  'form.added': { el: 'Προστέθηκε!', en: 'Added!' },
   'form.card': { el: 'Κάρτα (προαιρετικό)', en: 'Card (optional)' },
   'form.cardPlaceholder': { el: 'π.χ. Visa ••4417 ή Revolut', en: 'e.g. Visa ••4417 or Revolut' },
   'form.cardLabel': { el: 'Με ποια κάρτα πληρώνεται', en: 'Which card pays for it' },

@@ -376,30 +376,35 @@ export default function Settings() {
           <Text style={styles.warning}>{t('settings.noDays')}</Text>
         )}
 
-        <View style={styles.divider} />
+        {/* Μόνο για τον developer: φαίνεται στο Expo Go, κρύβεται στην εφαρμογή του store. */}
+        {__DEV__ && (
+          <>
+            <View style={styles.divider} />
 
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>{t('settings.scheduled')}</Text>
-          <Text style={styles.rowValue}>{scheduledCount}</Text>
-        </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('settings.scheduled')}</Text>
+              <Text style={styles.rowValue}>{scheduledCount}</Text>
+            </View>
 
-        {nextReminder && (
-          <View style={styles.next}>
-            <Text style={styles.rowLabel}>{t('settings.nextReminder')}</Text>
-            <Text style={styles.rowValue}>{formatReminder(nextReminder, language)}</Text>
-            <Text style={styles.preview}>
-              {language === 'el' ? `«${nextReminder.body}»` : `“${nextReminder.body}”`}
-            </Text>
-          </View>
+            {nextReminder && (
+              <View style={styles.next}>
+                <Text style={styles.rowLabel}>{t('settings.nextReminder')}</Text>
+                <Text style={styles.rowValue}>{formatReminder(nextReminder, language)}</Text>
+                <Text style={styles.preview}>
+                  {language === 'el' ? `«${nextReminder.body}»` : `“${nextReminder.body}”`}
+                </Text>
+              </View>
+            )}
+
+            <Pressable
+              onPress={handleTest}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+            >
+              <Text style={styles.buttonText}>{t('settings.sendTest')}</Text>
+            </Pressable>
+          </>
         )}
-
-        <Pressable
-          onPress={handleTest}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-        >
-          <Text style={styles.buttonText}>{t('settings.sendTest')}</Text>
-        </Pressable>
 
         {permission === 'denied' && (
           <Pressable onPress={() => Linking.openSettings()} accessibilityRole="link">

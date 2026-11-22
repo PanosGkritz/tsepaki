@@ -10,6 +10,8 @@ export type ThemeColors = {
   accent: string;
   accentBright: string;
   warning: string;
+  danger: string;
+  neutral: string;
   onAccent: string;
 };
 
@@ -23,6 +25,8 @@ export const darkColors: ThemeColors = {
   accent: '#1F6F54',
   accentBright: '#4CC38A',
   warning: '#F5A35C',
+  danger: '#E5484D',
+  neutral: '#5B5F68',
   onAccent: '#FFFFFF',
 };
 
@@ -36,6 +40,8 @@ export const lightColors: ThemeColors = {
   accent: '#1F6F54',
   accentBright: '#17784F',
   warning: '#B4500B',
+  danger: '#D93D42',
+  neutral: '#8E9097',
   onAccent: '#FFFFFF',
 };
 

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { fonts, radius, spacing } from '../constants/theme';
 import { daysUntil, formatChargeDay, formatRelativeDays } from '../lib/dates';
 import { createStyles } from '../lib/styles';
@@ -19,6 +20,11 @@ const chunk = <T,>(items: T[], size: number) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, index * size + size),
   );
+
+// Ήπια κίνηση όταν μπαίνει, φεύγει ή αλλάζει θέση μια συνδρομή. Σέβεται τη «Μείωση κίνησης» του κινητού.
+const ROW_ENTERING = FadeIn.duration(220);
+const ROW_EXITING = FadeOut.duration(160);
+const ROW_LAYOUT = LinearTransition.duration(240);
 
 const openSubscription = (id: string) =>
   router.push({ pathname: '/subscription/[id]', params: { id } });
@@ -46,36 +52,42 @@ export const UpcomingCharges = ({
     const canMarkPaid = isManual && days <= 0;
 
     return (
-      <SubscriptionRow
+      <Animated.View
         key={subscription.id}
-        subscription={subscription}
-        showDivider={index < count - 1}
-        hideAmount={hideAmounts}
-        onPress={() => openSubscription(subscription.id)}
-        subtitle={
-          <>
-            {formatChargeDay(subscription.nextChargeDate, language)}
-            {' · '}
-            <Text style={days <= 2 ? styles.soon : undefined}>
-              {isOverdue ? t('upcoming.overdue') : formatRelativeDays(Math.max(days, 0), language)}
-            </Text>
-          </>
-        }
-        action={
-          canMarkPaid ? (
-            <Pressable
-              onPress={() => onMarkPaid(subscription)}
-              accessibilityRole="button"
-              accessibilityLabel={t('upcoming.markPaidLabel', { name: subscription.name })}
-              hitSlop={8}
-              style={({ pressed }) => [styles.paidButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="checkmark" size={14} color={colors.onAccent} />
-              <Text style={styles.paidText}>{t('upcoming.markPaid')}</Text>
-            </Pressable>
-          ) : undefined
-        }
-      />
+        entering={ROW_ENTERING}
+        exiting={ROW_EXITING}
+        layout={ROW_LAYOUT}
+      >
+        <SubscriptionRow
+          subscription={subscription}
+          showDivider={index < count - 1}
+          hideAmount={hideAmounts}
+          onPress={() => openSubscription(subscription.id)}
+          subtitle={
+            <>
+              {formatChargeDay(subscription.nextChargeDate, language)}
+              {' · '}
+              <Text style={days <= 2 ? styles.soon : undefined}>
+                {isOverdue ? t('upcoming.overdue') : formatRelativeDays(Math.max(days, 0), language)}
+              </Text>
+            </>
+          }
+          action={
+            canMarkPaid ? (
+              <Pressable
+                onPress={() => onMarkPaid(subscription)}
+                accessibilityRole="button"
+                accessibilityLabel={t('upcoming.markPaidLabel', { name: subscription.name })}
+                hitSlop={8}
+                style={({ pressed }) => [styles.paidButton, pressed && styles.pressed]}
+              >
+                <Ionicons name="checkmark" size={14} color={colors.onAccent} />
+                <Text style={styles.paidText}>{t('upcoming.markPaid')}</Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+      </Animated.View>
     );
   };
 
@@ -93,7 +105,17 @@ export const UpcomingCharges = ({
       </View>
 
       {pages.length === 0 ? (
-        <Text style={styles.empty}>{t('upcoming.empty')}</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.empty}>{t('upcoming.empty')}</Text>
+          <Pressable
+            onPress={() => router.navigate('/add')}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.emptyButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="add" size={18} color={colors.onAccent} />
+            <Text style={styles.emptyButtonText}>{t('upcoming.emptyAction')}</Text>
+          </Pressable>
+        </View>
       ) : (
         <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
           {width > 0 && (
@@ -108,11 +130,11 @@ export const UpcomingCharges = ({
             >
               {pages.map((items, pageIndex) => (
                 <View key={pageIndex} style={{ width }}>
-                  <View style={styles.list}>
+                  <Animated.View style={styles.list} layout={ROW_LAYOUT}>
                     {items.map((subscription, index) =>
                       renderRow(subscription, index, items.length),
                     )}
-                  </View>
+                  </Animated.View>
                 </View>
               ))}
             </ScrollView>
@@ -146,7 +168,31 @@ const useStyles = createStyles((colors) => ({
     paddingHorizontal: spacing.md,
   },
   soon: { color: colors.warning, fontFamily: fonts.medium },
-  empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
+  empty: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+  },
+  emptyButtonText: { color: colors.onAccent, fontSize: 14, fontFamily: fonts.medium },
   paidButton: {
     flexDirection: 'row',
     alignItems: 'center',

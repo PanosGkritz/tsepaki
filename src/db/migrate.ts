@@ -3,11 +3,17 @@ import { mockSubscriptions } from '../data/mockSubscriptions';
 
 const DATABASE_VERSION = 9;
 
+// Η βάση για εγγραφές οθόνης (src/app/_layout.tsx → databaseName="tsepaki-demo.db")
+// ξεκινάει με παραδείγματα. Η κανονική βάση ξεκινάει πάντα άδεια.
+const DEMO_DATABASE = 'tsepaki-demo.db';
+
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let currentVersion = result?.user_version ?? 0;
 
   if (currentVersion >= DATABASE_VERSION) return;
+
+  const isFreshDatabase = currentVersion === 0;
 
   if (currentVersion === 0) {
     await db.execAsync(`
@@ -33,20 +39,6 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
         status TEXT NOT NULL DEFAULT 'paid'
       );
     `);
-
-    for (const subscription of mockSubscriptions) {
-      await db.runAsync(
-        `INSERT INTO subscriptions (id, name, price_cents, cycle, next_charge_date, color, category)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        subscription.id,
-        subscription.name,
-        Math.round(subscription.price * 100),
-        subscription.cycle,
-        subscription.nextChargeDate,
-        subscription.color,
-        subscription.category,
-      );
-    }
 
     currentVersion = 1;
   }
@@ -131,5 +123,28 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     currentVersion = 9;
   }
 
+  if (isFreshDatabase && db.databasePath.endsWith(DEMO_DATABASE)) {
+    await seedDemoSubscriptions(db);
+  }
+
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+};
+
+const seedDemoSubscriptions = async (db: SQLiteDatabase) => {
+  for (const subscription of mockSubscriptions) {
+    await db.runAsync(
+      `INSERT INTO subscriptions
+         (id, name, price_cents, cycle, next_charge_date, color, category, service_id, payment_mode)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      subscription.id,
+      subscription.name,
+      Math.round(subscription.price * 100),
+      subscription.cycle,
+      subscription.nextChargeDate,
+      subscription.color,
+      subscription.category,
+      subscription.serviceId ?? subscription.id,
+      subscription.paymentMode,
+    );
+  }
 };

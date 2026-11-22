@@ -7,6 +7,7 @@ import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import { POOF_DURATION, PoofOut } from '../components/PoofOut';
 import { SubscriptionRow } from '../components/SubscriptionRow';
 import { fonts, radius, spacing } from '../constants/theme';
 import { cancelSubscription, deleteSubscription, getSubscriptions } from '../db/subscriptions';
@@ -27,6 +28,9 @@ const CYCLE_KEYS: Record<BillingCycle, StringKey> = {
 };
 
 const ACTION_WIDTH = 88;
+
+type RemoveKind = 'cancel' | 'delete';
+type Removing = { id: string; kind: RemoveKind };
 const LIST_TRANSITION = LinearTransition.duration(220);
 
 export default function Subscriptions() {
@@ -34,6 +38,7 @@ export default function Subscriptions() {
   const styles = useStyles();
   const { colors, t, language } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [removing, setRemoving] = useState<Removing | null>(null);
 
   const load = useCallback(() => {
     getSubscriptions(db).then(setSubscriptions);
@@ -41,12 +46,19 @@ export default function Subscriptions() {
 
   useFocusEffect(load);
 
-  const remove = async (action: () => Promise<void>) => {
-    await action();
+  // Πρώτα το «πουφ», μετά η αλλαγή στη βάση. Οι από κάτω γραμμές ανεβαίνουν ομαλά.
+  const remove = (subscription: Subscription, kind: RemoveKind) => {
+    setRemoving({ id: subscription.id, kind });
     hapticRemove();
-    await syncReminders(db);
-    notifyDataChanged();
-    load();
+
+    setTimeout(async () => {
+      if (kind === 'cancel') await cancelSubscription(db, subscription.id);
+      else await deleteSubscription(db, subscription.id);
+      await syncReminders(db);
+      notifyDataChanged();
+      setSubscriptions(await getSubscriptions(db));
+      setRemoving(null);
+    }, POOF_DURATION);
   };
 
   const confirmCancel = (subscription: Subscription, swipeable: SwipeableMethods) =>
@@ -54,7 +66,7 @@ export default function Subscriptions() {
       { text: t('edit.cancelNo'), style: 'cancel', onPress: swipeable.close },
       {
         text: t('edit.cancelYes'),
-        onPress: () => remove(() => cancelSubscription(db, subscription.id)),
+        onPress: () => remove(subscription, 'cancel'),
       },
     ]);
 
@@ -64,7 +76,7 @@ export default function Subscriptions() {
       {
         text: t('edit.delete'),
         style: 'destructive',
-        onPress: () => remove(() => deleteSubscription(db, subscription.id)),
+        onPress: () => remove(subscription, 'delete'),
       },
     ]);
 
@@ -96,47 +108,53 @@ export default function Subscriptions() {
             <Animated.View
               key={subscription.id}
               entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(180)}
+              exiting={FadeOut.duration(80)}
               layout={LIST_TRANSITION}
             >
-              <ReanimatedSwipeable
-                friction={2}
-                rightThreshold={ACTION_WIDTH / 2}
-                overshootRight={false}
-                containerStyle={styles.swipeable}
-                renderRightActions={(_progress, _translation, swipeable) => (
-                  <View style={styles.actions}>
-                    <SwipeAction
-                      icon="close-circle-outline"
-                      label={t('list.cancelAction')}
-                      onPress={() => confirmCancel(subscription, swipeable)}
-                    />
-                    <SwipeAction
-                      icon="trash-outline"
-                      label={t('edit.delete')}
-                      isDestructive
-                      onPress={() => confirmDelete(subscription, swipeable)}
+              <PoofOut
+                active={removing?.id === subscription.id}
+                color={removing?.kind === 'delete' ? colors.danger : colors.neutral}
+              >
+                <ReanimatedSwipeable
+                  friction={2}
+                  rightThreshold={ACTION_WIDTH / 2}
+                  overshootRight={false}
+                  containerStyle={styles.swipeable}
+                  renderRightActions={(_progress, _translation, swipeable) => (
+                    <View style={styles.actions}>
+                      <SwipeAction
+                        icon="close-circle-outline"
+                        label={t('list.cancelAction')}
+                        background={colors.neutral}
+                        onPress={() => confirmCancel(subscription, swipeable)}
+                      />
+                      <SwipeAction
+                        icon="trash-outline"
+                        label={t('edit.delete')}
+                        background={colors.danger}
+                        onPress={() => confirmDelete(subscription, swipeable)}
+                      />
+                    </View>
+                  )}
+                >
+                  <View style={styles.rowWrap}>
+                    <SubscriptionRow
+                      subscription={subscription}
+                      showDivider={index < subscriptions.length - 1}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/subscription/[id]',
+                          params: { id: subscription.id },
+                        })
+                      }
+                      subtitle={t('list.subtitle', {
+                        cycle: t(CYCLE_KEYS[subscription.cycle]),
+                        day: formatChargeDay(subscription.nextChargeDate, language),
+                      })}
                     />
                   </View>
-                )}
-              >
-                <View style={styles.rowWrap}>
-                  <SubscriptionRow
-                    subscription={subscription}
-                    showDivider={index < subscriptions.length - 1}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/subscription/[id]',
-                        params: { id: subscription.id },
-                      })
-                    }
-                    subtitle={t('list.subtitle', {
-                      cycle: t(CYCLE_KEYS[subscription.cycle]),
-                      day: formatChargeDay(subscription.nextChargeDate, language),
-                    })}
-                  />
-                </View>
-              </ReanimatedSwipeable>
+                </ReanimatedSwipeable>
+              </PoofOut>
             </Animated.View>
           ))}
         </Animated.View>
@@ -151,21 +169,25 @@ export default function Subscriptions() {
 type SwipeActionProps = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
+  background: string;
   onPress: () => void;
-  isDestructive?: boolean;
 };
 
-const SwipeAction = ({ icon, label, onPress, isDestructive = false }: SwipeActionProps) => {
+const SwipeAction = ({ icon, label, background, onPress }: SwipeActionProps) => {
   const styles = useStyles();
   const { colors } = usePreferences();
-  const color = isDestructive ? colors.warning : colors.text;
+  const color = colors.onAccent;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+      style={({ pressed }) => [
+        styles.action,
+        { backgroundColor: background },
+        pressed && styles.actionPressed,
+      ]}
     >
       <Ionicons name={icon} size={20} color={color} />
       <Text style={[styles.actionText, { color }]} numberOfLines={1}>
@@ -233,7 +255,7 @@ const useStyles = createStyles((colors) => ({
     justifyContent: 'center',
     gap: 4,
   },
-  actionPressed: { opacity: 0.6 },
+  actionPressed: { opacity: 0.8 },
   actionText: { fontSize: 12, fontFamily: fonts.medium },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   note: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
