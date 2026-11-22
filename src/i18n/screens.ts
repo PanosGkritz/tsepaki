@@ -42,4 +42,26 @@ export const screenStrings = {
     en: 'Everything stays on your phone. No account needed.',
   },
   'welcome.start': { el: 'Ξεκίνα', en: 'Get started' },
+  'intro.title': { el: 'Όλα έτοιμα!', en: 'You’re all set!' },
+  'intro.subtitle': {
+    el: 'Να τι κάνει το Τσεπάκι για σένα:',
+    en: 'Here’s what Tsepaki does for you:',
+  },
+  'intro.reminders': {
+    el: 'Σου θυμίζει πριν από κάθε χρέωση, όποτε θες εσύ.',
+    en: 'Reminds you before every charge, when you choose.',
+  },
+  'intro.catalog': {
+    el: 'Προσθέτεις Netflix, Spotify και άλλες 40+ με ένα πάτημα.',
+    en: 'Add Netflix, Spotify and 40+ more in one tap.',
+  },
+  'intro.overview': {
+    el: 'Βλέπεις πόσα δίνεις τον μήνα και πού πάνε.',
+    en: 'See what you spend each month and where it goes.',
+  },
+  'intro.privacy': {
+    el: 'Όλα μένουν στο κινητό σου. Χωρίς λογαριασμό.',
+    en: 'Everything stays on your phone. No account needed.',
+  },
+  'intro.continue': { el: 'Πάμε στην αρχική', en: 'Go to home' },
 } satisfies Strings;

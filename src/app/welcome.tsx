@@ -1,15 +1,17 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { AppLogo } from '../components/AppLogo';
+import { WelcomeIntro } from '../components/WelcomeIntro';
 import { fonts, radius, spacing } from '../constants/theme';
 import { saveSetting } from '../db/settings';
 import type { Language } from '../i18n';
@@ -37,6 +39,27 @@ export default function Welcome() {
   const { colors, t, language, setLanguage } = usePreferences();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Μετράμε μόνοι μας το πληκτρολόγιο: το κουμπί κάθεται ακριβώς από πάνω του
+  // και η οθόνη κυλάει ώστε να φαίνεται το όνομα που γράφεις.
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
+
+  const isKeyboardOpen = keyboardHeight > 0;
 
   const trimmedName = name.trim();
   const canContinue = trimmedName.length > 0 && !saving;
@@ -50,14 +73,15 @@ export default function Welcome() {
     await saveSetting(db, 'onboardingDone', true);
     await askForNotifications();
     await syncReminders(db);
-    router.replace('/');
+    setShowIntro(true);
   };
 
+  if (showIntro) {
+    return <WelcomeIntro onContinue={() => router.replace('/')} />;
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.screen}>
       <View style={styles.languageRow}>
         {LANGUAGE_OPTIONS.map((option) => {
           const isActive = option.value === language;
@@ -78,9 +102,15 @@ export default function Welcome() {
         })}
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.intro}>
-          <AppLogo size={72} />
+          {!isKeyboardOpen && <AppLogo size={72} />}
           <Text style={styles.title}>{t('welcome.title')}</Text>
           <Text style={styles.subtitle}>{t('welcome.subtitle')}</Text>
         </View>
@@ -100,9 +130,9 @@ export default function Welcome() {
           />
           <Text style={styles.hint}>{t('welcome.hint')}</Text>
         </View>
-      </View>
+      </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isKeyboardOpen && { paddingBottom: keyboardHeight + 12 }]}>
         <Pressable
           onPress={finish}
           disabled={!canContinue}
@@ -117,7 +147,7 @@ export default function Welcome() {
           <Text style={styles.buttonText}>{t('welcome.start')}</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -142,10 +172,11 @@ const useStyles = createStyles((colors) => ({
   languageChipActive: { backgroundColor: colors.text },
   languageText: { color: colors.text, fontSize: 13, fontFamily: fonts.medium },
   languageTextActive: { color: colors.background },
+  scroll: { flex: 1 },
   content: {
-    flex: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: 32,
+    paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
   intro: { gap: spacing.md },
@@ -163,7 +194,7 @@ const useStyles = createStyles((colors) => ({
     fontFamily: fonts.regular,
   },
   hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: 48 },
+  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40 },
   button: {
     height: 54,
     borderRadius: radius.md,
