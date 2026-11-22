@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
 import { findService } from '../../data/services';
 import { insertSubscription } from '../../db/subscriptions';
+import { hapticSuccess } from '../../lib/haptics';
 import { requestPermission } from '../../lib/notifications';
 import { syncReminders } from '../../lib/reminders';
 import { usePreferences } from '../../providers/PreferencesProvider';
@@ -24,6 +25,7 @@ export default function NewSubscription() {
 
   const handleSubmit = async (values: NewSubscriptionValues) => {
     await insertSubscription(db, values);
+    hapticSuccess();
     await enableReminders();
     await syncReminders(db);
     router.back();

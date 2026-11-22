@@ -9,6 +9,7 @@ import { getPaidBetween, markChargesPaid } from '../../db/charges';
 import { getSettings } from '../../db/settings';
 import { getSubscriptions } from '../../db/subscriptions';
 import { onDataChanged } from '../../lib/events';
+import { hapticSuccess } from '../../lib/haptics';
 import { buildGreeting } from '../../lib/greeting';
 import { syncReminders } from '../../lib/reminders';
 import { createStyles } from '../../lib/styles';
@@ -52,6 +53,7 @@ export default function Home() {
 
   const handleMarkPaid = async (subscription: Subscription) => {
     await markChargesPaid(db, [subscription.id], subscription.nextChargeDate);
+    hapticSuccess();
     await syncReminders(db);
     await load();
   };

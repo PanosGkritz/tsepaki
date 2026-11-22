@@ -2,14 +2,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SubscriptionRow } from '../components/SubscriptionRow';
 import { fonts, radius, spacing } from '../constants/theme';
-import { getSubscriptions } from '../db/subscriptions';
+import { cancelSubscription, deleteSubscription, getSubscriptions } from '../db/subscriptions';
 import type { StringKey } from '../i18n';
 import { getCostTotals } from '../lib/costs';
 import { formatChargeDay } from '../lib/dates';
+import { notifyDataChanged } from '../lib/events';
 import { formatEuro } from '../lib/format';
+import { hapticRemove } from '../lib/haptics';
+import { syncReminders } from '../lib/reminders';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import type { BillingCycle, Subscription } from '../types/subscription';
@@ -19,17 +26,47 @@ const CYCLE_KEYS: Record<BillingCycle, StringKey> = {
   yearly: 'form.yearly',
 };
 
+const ACTION_WIDTH = 88;
+const LIST_TRANSITION = LinearTransition.duration(220);
+
 export default function Subscriptions() {
   const db = useSQLiteContext();
   const styles = useStyles();
   const { colors, t, language } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      getSubscriptions(db).then(setSubscriptions);
-    }, [db]),
-  );
+  const load = useCallback(() => {
+    getSubscriptions(db).then(setSubscriptions);
+  }, [db]);
+
+  useFocusEffect(load);
+
+  const remove = async (action: () => Promise<void>) => {
+    await action();
+    hapticRemove();
+    await syncReminders(db);
+    notifyDataChanged();
+    load();
+  };
+
+  const confirmCancel = (subscription: Subscription, swipeable: SwipeableMethods) =>
+    Alert.alert(t('edit.cancelTitle'), t('edit.cancelMessage'), [
+      { text: t('edit.cancelNo'), style: 'cancel', onPress: swipeable.close },
+      {
+        text: t('edit.cancelYes'),
+        onPress: () => remove(() => cancelSubscription(db, subscription.id)),
+      },
+    ]);
+
+  const confirmDelete = (subscription: Subscription, swipeable: SwipeableMethods) =>
+    Alert.alert(t('edit.deleteTitle'), t('edit.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel', onPress: swipeable.close },
+      {
+        text: t('edit.delete'),
+        style: 'destructive',
+        onPress: () => remove(() => deleteSubscription(db, subscription.id)),
+      },
+    ]);
 
   const totals = getCostTotals(subscriptions);
 
@@ -54,28 +91,89 @@ export default function Subscriptions() {
       {subscriptions.length === 0 ? (
         <Text style={styles.empty}>{t('upcoming.empty')}</Text>
       ) : (
-        <View style={styles.list}>
+        <Animated.View style={styles.list} layout={LIST_TRANSITION}>
           {subscriptions.map((subscription, index) => (
-            <SubscriptionRow
+            <Animated.View
               key={subscription.id}
-              subscription={subscription}
-              showDivider={index < subscriptions.length - 1}
-              onPress={() =>
-                router.push({ pathname: '/subscription/[id]', params: { id: subscription.id } })
-              }
-              subtitle={t('list.subtitle', {
-                cycle: t(CYCLE_KEYS[subscription.cycle]),
-                day: formatChargeDay(subscription.nextChargeDate, language),
-              })}
-            />
+              entering={FadeIn.duration(200)}
+              exiting={FadeOut.duration(180)}
+              layout={LIST_TRANSITION}
+            >
+              <ReanimatedSwipeable
+                friction={2}
+                rightThreshold={ACTION_WIDTH / 2}
+                overshootRight={false}
+                containerStyle={styles.swipeable}
+                renderRightActions={(_progress, _translation, swipeable) => (
+                  <View style={styles.actions}>
+                    <SwipeAction
+                      icon="close-circle-outline"
+                      label={t('list.cancelAction')}
+                      onPress={() => confirmCancel(subscription, swipeable)}
+                    />
+                    <SwipeAction
+                      icon="trash-outline"
+                      label={t('edit.delete')}
+                      isDestructive
+                      onPress={() => confirmDelete(subscription, swipeable)}
+                    />
+                  </View>
+                )}
+              >
+                <View style={styles.rowWrap}>
+                  <SubscriptionRow
+                    subscription={subscription}
+                    showDivider={index < subscriptions.length - 1}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/subscription/[id]',
+                        params: { id: subscription.id },
+                      })
+                    }
+                    subtitle={t('list.subtitle', {
+                      cycle: t(CYCLE_KEYS[subscription.cycle]),
+                      day: formatChargeDay(subscription.nextChargeDate, language),
+                    })}
+                  />
+                </View>
+              </ReanimatedSwipeable>
+            </Animated.View>
           ))}
-        </View>
+        </Animated.View>
       )}
 
+      {subscriptions.length > 0 && <Text style={styles.note}>{t('list.swipeHint')}</Text>}
       <Text style={styles.note}>{t('list.note')}</Text>
     </ScrollView>
   );
 }
+
+type SwipeActionProps = {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+  isDestructive?: boolean;
+};
+
+const SwipeAction = ({ icon, label, onPress, isDestructive = false }: SwipeActionProps) => {
+  const styles = useStyles();
+  const { colors } = usePreferences();
+  const color = isDestructive ? colors.warning : colors.text;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+    >
+      <Ionicons name={icon} size={20} color={color} />
+      <Text style={[styles.actionText, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
 
 type TotalProps = { label: string; value: string };
 
@@ -124,8 +222,19 @@ const useStyles = createStyles((colors) => ({
   list: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
+    overflow: 'hidden',
   },
+  swipeable: { backgroundColor: colors.surfaceRaised },
+  rowWrap: { backgroundColor: colors.surface, paddingHorizontal: spacing.md },
+  actions: { flexDirection: 'row', width: ACTION_WIDTH * 2 },
+  action: {
+    width: ACTION_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  actionPressed: { opacity: 0.6 },
+  actionText: { fontSize: 12, fontFamily: fonts.medium },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   note: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
 }));

@@ -86,6 +86,11 @@ export const subscriptionStrings = {
   'list.monthly': { el: 'Μέσο κόστος / μήνα', en: 'Average per month' },
   'list.yearly': { el: 'Κόστος / χρόνο', en: 'Per year' },
   'list.subtitle': { el: '{cycle} · επόμενη {day}', en: '{cycle} · next {day}' },
+  'list.cancelAction': { el: 'Ακύρωσα', en: 'Cancelled' },
+  'list.swipeHint': {
+    el: 'Σύρε μια συνδρομή αριστερά για «Ακύρωσα» ή «Διαγραφή».',
+    en: 'Swipe a subscription left to mark it cancelled or delete it.',
+  },
   'list.note': {
     el: 'Στο μηνιαίο κόστος οι ετήσιες μετράνε με το 1/12 της τιμής τους.',
     en: 'Yearly subscriptions count as 1/12 of their price in the monthly cost.',

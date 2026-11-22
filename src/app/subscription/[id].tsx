@@ -17,6 +17,7 @@ import type { Language, Translate } from '../../i18n';
 import { daysUntil, formatChargeDay, parseIsoDate } from '../../lib/dates';
 import { notifyDataChanged } from '../../lib/events';
 import { formatEuro } from '../../lib/format';
+import { hapticRemove, hapticSuccess } from '../../lib/haptics';
 import { syncReminders } from '../../lib/reminders';
 import { getMonthName, toAccusative } from '../../lib/stats';
 import { createStyles } from '../../lib/styles';
@@ -72,6 +73,7 @@ export default function EditSubscription() {
 
   const handleMarkPaid = async () => {
     await markChargesPaid(db, [subscription.id], subscription.nextChargeDate);
+    hapticSuccess();
     await finish();
   };
 
@@ -82,6 +84,7 @@ export default function EditSubscription() {
         text: t('edit.cancelYes'),
         onPress: async () => {
           await cancelSubscription(db, subscription.id);
+          hapticRemove();
           await finish();
         },
       },
@@ -95,6 +98,7 @@ export default function EditSubscription() {
         style: 'destructive',
         onPress: async () => {
           await deleteSubscription(db, subscription.id);
+          hapticRemove();
           await finish();
         },
       },

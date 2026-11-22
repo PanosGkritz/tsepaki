@@ -9,6 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppLock } from '../components/AppLock';
 import { ReminderSync } from '../components/ReminderSync';
 import { migrateDbIfNeeded } from '../db/migrate';
@@ -32,14 +33,16 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <SQLiteProvider databaseName="tsepaki.db" onInit={migrateDbIfNeeded}>
-      <PreferencesProvider>
-        <ReminderSync />
-        <AppLock>
-          <AppStack />
-        </AppLock>
-      </PreferencesProvider>
-    </SQLiteProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SQLiteProvider databaseName="tsepaki.db" onInit={migrateDbIfNeeded}>
+        <PreferencesProvider>
+          <ReminderSync />
+          <AppLock>
+            <AppStack />
+          </AppLock>
+        </PreferencesProvider>
+      </SQLiteProvider>
+    </GestureHandlerRootView>
   );
 }
 
