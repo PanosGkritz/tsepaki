@@ -1,6 +1,7 @@
 import type { Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
 import { addCycle, toIsoDate } from './dates';
+import { getMyCost } from './share';
 
 export type CalendarItem = {
   key: string;
@@ -51,7 +52,7 @@ export const getUpcomingItems = (
           key: `${subscription.id}-${date}`,
           subscription,
           date,
-          amount: subscription.price,
+          amount: getMyCost(subscription),
           status: 'upcoming',
         });
       }

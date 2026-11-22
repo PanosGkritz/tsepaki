@@ -31,10 +31,31 @@ export const SERVICE_FILTERS: ServiceFilter[] = [
   ...CATEGORIES.filter((category) => category !== 'other'),
 ];
 
-// Πότε ελέγχθηκαν οι τιμές. Αλλάζει μαζί με τις τιμές των πακέτων.
+// Πότε ελέγχθηκαν οι τιμές που είναι μέσα στην εφαρμογή. Αλλάζει μαζί με τις τιμές των πακέτων.
 export const CATALOG_PRICES_AS_OF: Record<Language, string> = {
   el: 'Νοεμβρίου 2026',
   en: 'November 2026',
+};
+
+// Νεότερες τιμές από το docs/catalog/prices.json (GitHub Pages), αν έχουν κατέβει.
+// Αλλάζουν μόνο τον κατάλογο, ποτέ τις συνδρομές που έχει ήδη ο χρήστης.
+export type CatalogPrices = {
+  asOf: Record<Language, string>;
+  plans: Record<string, ServicePlan[]>;
+};
+
+let catalogPrices: CatalogPrices | null = null;
+
+export const applyCatalogPrices = (prices: CatalogPrices) => {
+  catalogPrices = prices;
+};
+
+export const getCatalogAsOf = (language: Language) =>
+  catalogPrices?.asOf[language] ?? CATALOG_PRICES_AS_OF[language];
+
+export const getServicePlans = (service?: ServiceTemplate): ServicePlan[] => {
+  if (!service) return [];
+  return catalogPrices?.plans[service.id] ?? service.plans ?? [];
 };
 
 const monthly = (name: string, price: number, isDefault?: true): ServicePlan => ({
@@ -389,8 +410,10 @@ export const findService = (id: string) => services.find((service) => service.id
 export const getServiceName = (service: ServiceTemplate, t: Translate) =>
   service.nameKey ? t(service.nameKey) : service.name;
 
-export const getDefaultPlan = (service?: ServiceTemplate) =>
-  service?.plans?.find((plan) => plan.isDefault) ?? service?.plans?.[0];
+export const getDefaultPlan = (service?: ServiceTemplate) => {
+  const plans = getServicePlans(service);
+  return plans.find((plan) => plan.isDefault) ?? plans[0];
+};
 
 export const getPlanPrice = (plan: ServicePlan, cycle: BillingCycle) =>
   cycle === 'yearly' ? plan.yearly : plan.monthly;

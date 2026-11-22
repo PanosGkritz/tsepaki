@@ -2,6 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { darkColors, lightColors, type ThemeColors, type ThemeMode } from '../constants/theme';
+import { loadCachedCatalogPrices } from '../db/catalogPrices';
 import { getSettings, saveSetting } from '../db/settings';
 import {
     getDeviceLanguage,
@@ -11,6 +12,8 @@ import {
     type Translate,
     type TranslateParams,
 } from '../i18n';
+import { getDeviceCurrency, type CurrencyCode } from '../lib/currency';
+import { setActiveCurrency } from '../lib/format';
 
 type Preferences = {
   colors: ThemeColors;
@@ -19,11 +22,17 @@ type Preferences = {
   language: Language;
   hideAmounts: boolean;
   appLock: boolean;
+  currency: CurrencyCode;
+  countFullShared: boolean;
+  isPro: boolean;
   t: Translate;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLanguage: (language: Language) => Promise<void>;
   setHideAmounts: (hidden: boolean) => Promise<void>;
   setAppLock: (enabled: boolean) => Promise<void>;
+  setCurrency: (currency: CurrencyCode) => Promise<void>;
+  setCountFullShared: (enabled: boolean) => Promise<void>;
+  setDevPro: (enabled: boolean) => Promise<void>;
 };
 
 const PreferencesContext = createContext<Preferences | null>(null);
@@ -37,16 +46,27 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
   const [language, setLanguageState] = useState<Language>(getDeviceLanguage);
   const [hideAmounts, setHideAmountsState] = useState(false);
   const [appLock, setAppLockState] = useState(false);
+  const [currency, setCurrencyState] = useState<CurrencyCode>(getDeviceCurrency);
+  const [countFullShared, setCountFullSharedState] = useState(false);
+  const [devPro, setDevProState] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    getSettings(db).then((settings) => {
+    const load = async () => {
+      const settings = await getSettings(db);
+      await loadCachedCatalogPrices(db);
       setThemeModeState(settings.themeMode);
       if (settings.language) setLanguageState(settings.language);
+      const savedCurrency = settings.currency ?? getDeviceCurrency();
+      setActiveCurrency(savedCurrency);
+      setCurrencyState(savedCurrency);
       setHideAmountsState(settings.hideAmounts);
       setAppLockState(settings.appLock);
+      setCountFullSharedState(settings.countFullShared);
+      setDevProState(settings.devPro);
       setReady(true);
-    });
+    };
+    load();
   }, [db]);
 
   const isDark = themeMode === 'system' ? systemScheme !== 'light' : themeMode === 'dark';
@@ -59,6 +79,10 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
       language,
       hideAmounts,
       appLock,
+      currency,
+      countFullShared,
+      // Το Pro ανοίγει προς το παρόν μόνο από τον διακόπτη του developer (Expo Go).
+      isPro: __DEV__ && devPro,
       t: (key: StringKey, params?: TranslateParams) => translate(language, key, params),
       setThemeMode: async (mode) => {
         setThemeModeState(mode);
@@ -76,8 +100,21 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
         setAppLockState(enabled);
         await saveSetting(db, 'appLock', enabled);
       },
+      setCurrency: async (nextCurrency) => {
+        setActiveCurrency(nextCurrency);
+        setCurrencyState(nextCurrency);
+        await saveSetting(db, 'currency', nextCurrency);
+      },
+      setCountFullShared: async (enabled) => {
+        setCountFullSharedState(enabled);
+        await saveSetting(db, 'countFullShared', enabled);
+      },
+      setDevPro: async (enabled) => {
+        setDevProState(enabled);
+        await saveSetting(db, 'devPro', enabled);
+      },
     }),
-    [db, isDark, themeMode, language, hideAmounts, appLock],
+    [db, isDark, themeMode, language, hideAmounts, appLock, currency, countFullShared, devPro],
   );
 
   if (!ready) {

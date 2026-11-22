@@ -9,12 +9,18 @@ export type ChargePayload = {
   chargeDate: string;
 };
 
+// Τι ανοίγει όταν ο χρήστης πατήσει την ειδοποίηση.
+export type TapData =
+  | { kind: 'home' }
+  | { kind: 'share'; subscriptionId: string; chargeDate: string };
+
 export type Reminder = {
   id: string;
   date: Date;
   title: string;
   body: string;
   payload?: ChargePayload;
+  tap?: TapData;
 };
 
 export const PAID_ACTION = 'paid';
@@ -82,6 +88,21 @@ export const readChargePayload = (data: unknown): ChargePayload | null => {
   return { subscriptionIds: ids, chargeDate };
 };
 
+export const readTapData = (data: unknown): TapData | null => {
+  if (typeof data !== 'object' || data === null || !('kind' in data)) return null;
+  if (data.kind === 'home') return { kind: 'home' };
+  if (
+    data.kind === 'share' &&
+    'subscriptionId' in data &&
+    'chargeDate' in data &&
+    typeof data.subscriptionId === 'string' &&
+    typeof data.chargeDate === 'string'
+  ) {
+    return { kind: 'share', subscriptionId: data.subscriptionId, chargeDate: data.chargeDate };
+  }
+  return null;
+};
+
 export const getPermissionState = async () => {
   const { status } = await Notifications.getPermissionsAsync();
   return toPermissionState(status);
@@ -106,6 +127,7 @@ export const replaceScheduledReminders = async (reminders: Reminder[], language:
       content: {
         title: reminder.title,
         body: reminder.body,
+        ...(reminder.tap && { data: reminder.tap }),
         ...(reminder.payload && {
           data: reminder.payload,
           categoryIdentifier: CHARGE_DAY_CATEGORY,

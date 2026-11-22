@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fonts } from '../constants/theme';
 import { formatMoney } from '../lib/format';
+import { getShareBreakdown } from '../lib/share';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import type { Subscription } from '../types/subscription';
+import { AvatarStack } from './AvatarStack';
 import { ServiceLogo } from './ServiceLogo';
 
 type SubscriptionRowProps = {
@@ -25,7 +27,10 @@ export const SubscriptionRow = ({
 }: SubscriptionRowProps) => {
   const styles = useStyles();
   const { language, t } = usePreferences();
-  const price = formatMoney(subscription.price, language, hideAmount);
+  const { share } = subscription;
+  const breakdown = share ? getShareBreakdown(subscription.price, share) : null;
+  const price = formatMoney(breakdown ? breakdown.mine : subscription.price, language, hideAmount);
+  const total = formatMoney(subscription.price, language, hideAmount);
 
   return (
     <Pressable
@@ -62,10 +67,21 @@ export const SubscriptionRow = ({
           {subtitle}
           {subscription.card ? ` · ${subscription.card}` : ''}
         </Text>
+        {share && (
+          <View style={styles.shareRow}>
+            <AvatarStack names={share.people.map((person) => person.name)} size={18} />
+            <Text style={styles.shareText} numberOfLines={1}>
+              {share.payer
+                ? t('share.rowPayer', { total, name: share.payer })
+                : t('share.rowTotal', { total, count: share.people.length })}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.side}>
         <Text style={styles.price}>{price}</Text>
+        {share && <Text style={styles.you}>{t('share.you')}</Text>}
         {action}
       </View>
     </Pressable>
@@ -96,6 +112,9 @@ const useStyles = createStyles((colors) => ({
   trialText: { color: colors.accentBright, fontSize: 11, fontFamily: fonts.medium },
   subtitle: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   side: { alignItems: 'flex-end', gap: 6 },
+  shareRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  shareText: { flexShrink: 1, color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
+  you: { color: colors.textMuted, fontSize: 11, fontFamily: fonts.medium, marginTop: -4 },
   price: {
     color: colors.text,
     fontSize: 15,

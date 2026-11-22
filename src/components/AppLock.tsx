@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Modal, Pressable, Text, View, type AppStateStatus } from 'react-native';
+import { AppState, Modal, Pressable, Text, View } from 'react-native';
 import { fonts, radius, spacing } from '../constants/theme';
 import { authenticate } from '../lib/lock';
 import { createStyles } from '../lib/styles';
@@ -15,7 +15,7 @@ export const AppLock = ({ children }: AppLockProps) => {
   const [locked, setLocked] = useState(appLock);
   const lockedRef = useRef(appLock);
   const busyRef = useRef(false);
-  const lastStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const lastStateRef = useRef<string | null | undefined>(AppState.currentState);
 
   const unlock = useCallback(async () => {
     if (busyRef.current) return;

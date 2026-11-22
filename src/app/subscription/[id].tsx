@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { SharePayments } from '../../components/SharePayments';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { findService } from '../../data/services';
@@ -126,6 +127,10 @@ export default function EditSubscription() {
                 })}
               </Text>
             </Pressable>
+          )}
+
+          {subscription.share && !subscription.share.payer && (
+            <SharePayments subscription={subscription} />
           )}
 
           {totals && (

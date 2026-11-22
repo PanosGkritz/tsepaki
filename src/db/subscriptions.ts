@@ -5,6 +5,9 @@ import type {
   PaymentMode,
   Subscription,
 } from '../types/subscription';
+import { addMonths, toIsoDate } from '../lib/dates';
+import { REVIEW_AFTER_MONTHS } from '../lib/review';
+import { parseShare, serializeShare } from '../lib/share';
 
 type SubscriptionRow = {
   id: string;
@@ -19,6 +22,10 @@ type SubscriptionRow = {
   payment_mode: string;
   card: string | null;
   is_trial: number;
+  created_at: string | null;
+  review_after: string | null;
+  share: string | null;
+  cancelled_at?: string | null;
 };
 
 const toCycle = (value: string): BillingCycle => (value === 'yearly' ? 'yearly' : 'monthly');
@@ -39,6 +46,9 @@ const toSubscription = (row: SubscriptionRow): Subscription => ({
   domain: row.domain ?? undefined,
   card: row.card ?? undefined,
   isTrial: row.is_trial === 1,
+  share: parseShare(row.share),
+  createdAt: row.created_at ? row.created_at.slice(0, 10) : undefined,
+  reviewAfter: row.review_after ?? undefined,
 });
 
 const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -61,8 +71,8 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
   await db.runAsync(
     `INSERT INTO subscriptions
        (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain,
-        payment_mode, card, is_trial)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        payment_mode, card, is_trial, share)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -75,6 +85,7 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
     subscription.paymentMode,
     subscription.card ?? null,
     subscription.isTrial ? 1 : 0,
+    serializeShare(subscription.share),
   );
 
   return id;
@@ -88,7 +99,8 @@ export const updateSubscription = async (
   await db.runAsync(
     `UPDATE subscriptions
      SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
-         category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?, is_trial = ?
+         category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?, is_trial = ?,
+         share = ?
      WHERE id = ?`,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -101,6 +113,7 @@ export const updateSubscription = async (
     subscription.paymentMode,
     subscription.card ?? null,
     subscription.isTrial ? 1 : 0,
+    serializeShare(subscription.share),
     id,
   );
 };
@@ -123,7 +136,32 @@ export const cancelSubscription = async (db: SQLiteDatabase, id: string) => {
   );
 };
 
+// «Ναι, το κρατάω»: η ερώτηση ξαναέρχεται σε 4 μήνες.
+export const postponeReview = async (db: SQLiteDatabase, id: string, today = new Date()) => {
+  await db.runAsync(
+    'UPDATE subscriptions SET review_after = ? WHERE id = ?',
+    addMonths(toIsoDate(today), REVIEW_AFTER_MONTHS),
+    id,
+  );
+};
+
+export type CancelledSubscription = Subscription & { cancelledAt: string };
+
+export const getCancelledSince = async (db: SQLiteDatabase, fromIso: string) => {
+  const rows = await db.getAllAsync<SubscriptionRow & { cancelled_at: string }>(
+    'SELECT * FROM subscriptions WHERE cancelled_at IS NOT NULL AND cancelled_at >= ?',
+    fromIso,
+  );
+  return rows.map(
+    (row): CancelledSubscription => ({
+      ...toSubscription(row),
+      cancelledAt: row.cancelled_at.slice(0, 10),
+    }),
+  );
+};
+
 export const deleteSubscription = async (db: SQLiteDatabase, id: string) => {
+  await db.runAsync('DELETE FROM share_payments WHERE subscription_id = ?', id);
   await db.runAsync('DELETE FROM charges WHERE subscription_id = ?', id);
   await db.runAsync('DELETE FROM subscriptions WHERE id = ?', id);
 };

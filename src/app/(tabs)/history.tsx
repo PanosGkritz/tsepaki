@@ -8,12 +8,13 @@ import { MonthlyBars } from '../../components/MonthlyBars';
 import { SubscriptionRow } from '../../components/SubscriptionRow';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { getChargedItems } from '../../db/charges';
-import { getSubscriptions } from '../../db/subscriptions';
+import { getCancelledSince, getSubscriptions } from '../../db/subscriptions';
 import { LOCALES, type Language } from '../../i18n';
 import type { CalendarItem } from '../../lib/calendar';
 import { formatChargeDay, parseIsoDate, toIsoDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/format';
 import { syncReminders } from '../../lib/reminders';
+import { getSavedThisYear } from '../../lib/review';
 import { getCategoryBreakdown, getMonthlyTotals } from '../../lib/stats';
 import { createStyles } from '../../lib/styles';
 import { getMonthLabel } from '../../lib/summary';
@@ -60,6 +61,7 @@ export default function History() {
   const [charges, setCharges] = useState<CalendarItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [query, setQuery] = useState('');
+  const [saved, setSaved] = useState(0);
 
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const chargesY = useRef(0);
@@ -83,14 +85,16 @@ export default function History() {
 
       const load = async () => {
         await syncReminders(db);
-        const [loadedCharges, loadedSubscriptions] = await Promise.all([
+        const [loadedCharges, loadedSubscriptions, cancelled] = await Promise.all([
           getChargedItems(db, '0000-01-01', toIsoDate(new Date())),
           getSubscriptions(db),
+          getCancelledSince(db, `${new Date().getFullYear()}-01-01`),
         ]);
 
         if (!isActive) return;
         setCharges(loadedCharges);
         setSubscriptions(loadedSubscriptions);
+        setSaved(getSavedThisYear(cancelled));
 
         if (pendingScroll.current) requestAnimationFrame(scrollToCharges);
       };
@@ -136,6 +140,16 @@ export default function History() {
           <Stat label={t('history.average')} value={money(monthlyAverage)} />
         </View>
       </View>
+
+      {saved > 0 && (
+        <View style={styles.savedCard}>
+          <Ionicons name="leaf-outline" size={20} color={colors.accentBright} />
+          <View style={styles.savedText}>
+            <Text style={styles.savedTitle}>{t('history.saved', { amount: money(saved) })}</Text>
+            <Text style={styles.savedNote}>{t('history.savedNote')}</Text>
+          </View>
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>{t('history.byMonth')}</Text>
       <View style={styles.card}>
@@ -240,6 +254,17 @@ const useStyles = createStyles((colors) => ({
   },
   cardLabel: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.medium, lineHeight: 20 },
   cardNote: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, marginTop: 14 },
+  savedCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 18,
+  },
+  savedText: { flex: 1 },
+  savedTitle: { color: colors.text, fontSize: 16, fontFamily: fonts.semibold },
+  savedNote: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, marginTop: 2 },
   bigAmount: {
     color: colors.text,
     fontSize: 34,

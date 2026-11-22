@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { CalendarItem } from '../lib/calendar';
 import { addCycle, toIsoDate } from '../lib/dates';
+import { getMyCost } from '../lib/share';
 import { getSubscriptions, toPaymentMode } from './subscriptions';
 
 type ChargeJoinRow = {
@@ -18,6 +19,7 @@ type ChargeJoinRow = {
   payment_mode: string;
 };
 
+// Στις κοινές καταγράφεται το δικό σου μερίδιο: αυτό βγαίνει τελικά από την τσέπη σου.
 const recordCharge = async (
   db: SQLiteDatabase,
   subscriptionId: string,
@@ -64,7 +66,7 @@ export const processDueCharges = async (db: SQLiteDatabase, today = new Date()) 
     if (nextDate >= todayIso) continue;
 
     while (nextDate < todayIso) {
-      await recordCharge(db, subscription.id, subscription.price, nextDate);
+      await recordCharge(db, subscription.id, getMyCost(subscription), nextDate);
       nextDate = addCycle(nextDate, subscription.cycle);
     }
 
@@ -83,7 +85,7 @@ export const markChargesPaid = async (
     if (!subscriptionIds.includes(subscription.id)) continue;
     if (subscription.nextChargeDate !== chargeDate) continue;
 
-    await recordCharge(db, subscription.id, subscription.price, chargeDate);
+    await recordCharge(db, subscription.id, getMyCost(subscription), chargeDate);
     await moveNextChargeDate(db, subscription.id, chargeDate, addCycle(chargeDate, subscription.cycle));
   }
 };
@@ -148,4 +150,21 @@ export const getChargedItems = async (db: SQLiteDatabase, fromIso: string, toIso
       },
     }),
   );
+};
+export const getChargesSince = async (db: SQLiteDatabase, subscriptionId: string, fromIso: string) => {
+  const row = await db.getFirstAsync<{ total: number | null }>(
+    'SELECT SUM(amount_cents) AS total FROM charges WHERE subscription_id = ? AND charge_date >= ?',
+    subscriptionId,
+    fromIso,
+  );
+  return (row?.total ?? 0) / 100;
+};
+
+export const getRecentChargeDates = async (db: SQLiteDatabase, subscriptionId: string, limit = 3) => {
+  const rows = await db.getAllAsync<{ charge_date: string }>(
+    'SELECT charge_date FROM charges WHERE subscription_id = ? ORDER BY charge_date DESC LIMIT ?',
+    subscriptionId,
+    limit,
+  );
+  return rows.map((row) => row.charge_date);
 };

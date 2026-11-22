@@ -4,14 +4,24 @@ import { getSettings, type AppSettings } from '../db/settings';
 import { getSubscriptions } from '../db/subscriptions';
 import { getDeviceLanguage, type Language } from '../i18n';
 import type { Subscription } from '../types/subscription';
-import { parseIsoDate, toIsoDate } from './dates';
-import { formatEuro } from './format';
+import { getDeviceCurrency } from './currency';
+import { addCycle, parseIsoDate, toIsoDate } from './dates';
+import { formatEuro, setActiveCurrency } from './format';
+import { getMyCost, getOutflow, getShareBreakdown } from './share';
 import { getPermissionState, replaceScheduledReminders, type Reminder } from './notifications';
 
 type ReminderSettings = Pick<
   AppSettings,
   'reminderDays' | 'reminderHour' | 'yearlyReminder' | 'language'
 >;
+
+// Η εβδομαδιαία σύνοψη έρχεται κάθε Κυριακή στις 8 το βράδυ, για τη Δευτέρα έως Κυριακή που έρχεται.
+const WEEKLY_DAY = 0;
+const WEEKLY_HOUR = 20;
+const WEEKLY_AHEAD = 2;
+const WEEKLY_MAX_NAMES = 4;
+// Το «ζήτα τα μερίδια» έρχεται το βράδυ της χρέωσης.
+const SHARE_REQUEST_HOUR = 20;
 
 type Templates = {
   weekdayOn: string[];
@@ -32,6 +42,11 @@ type Templates = {
   groupOnDay: string;
   and: string;
   many: string;
+  weeklyTitle: string;
+  weeklyBody: string;
+  weeklyMore: string;
+  shareRequest: string;
+  shareGive: string;
 };
 
 const TEMPLATES: Record<Language, Templates> = {
@@ -80,6 +95,11 @@ const TEMPLATES: Record<Language, Templates> = {
     groupOnDay: '{day} φεύγουν συνολικά {amount}.',
     and: 'και',
     many: '{count} συνδρομές',
+    weeklyTitle: 'Η εβδομάδα σου',
+    weeklyBody: 'Αυτή την εβδομάδα φεύγουν συνολικά {amount}: {list}.',
+    weeklyMore: 'και άλλες {count}',
+    shareRequest: 'Πέρασε η χρέωση. Ζήτα τα μερίδια: {list}.',
+    shareGive: 'Αύριο δώσε τα {amount} σου. Πληρώνει: {name}.',
   },
   en: {
     weekdayOn: [
@@ -126,6 +146,11 @@ const TEMPLATES: Record<Language, Templates> = {
     groupOnDay: 'In total, {amount} goes out {day}.',
     and: 'and',
     many: '{count} subscriptions',
+    weeklyTitle: 'Your week ahead',
+    weeklyBody: 'This week {amount} goes out in total: {list}.',
+    weeklyMore: '{count} more',
+    shareRequest: 'The charge went through. Ask for the shares: {list}.',
+    shareGive: 'Tomorrow, give your {amount} to {name}.',
   },
 };
 
@@ -178,7 +203,7 @@ const buildSingleBody = (
   templates: Templates,
   language: Language,
 ) => {
-  const amount = formatEuro(subscription.price, language);
+  const amount = formatEuro(getOutflow(subscription), language);
   const isManual = subscription.paymentMode === 'manual';
 
   if (daysBefore === 0) {
@@ -238,7 +263,7 @@ const buildGroupReminder = (
     };
   }
 
-  const total = group.reduce((sum, subscription) => sum + subscription.price, 0);
+  const total = group.reduce((sum, subscription) => sum + getOutflow(subscription), 0);
   return {
     id,
     date,
@@ -300,6 +325,134 @@ const buildTrialReminders = (
   );
 };
 
+const fillList = (template: string, values: Record<string, string>) =>
+  Object.entries(values).reduce((text, [key, value]) => text.replace(`{${key}}`, value), template);
+
+// Όλες οι χρεώσεις μιας συνδρομής μέσα σε ένα διάστημα (π.χ. μια μηνιαία μπορεί να πέσει μία φορά).
+const chargeDatesBetween = (subscription: Subscription, fromIso: string, toIso: string) => {
+  const dates: string[] = [];
+  let date = subscription.nextChargeDate;
+  while (date < fromIso) date = addCycle(date, subscription.cycle);
+  while (date <= toIso) {
+    dates.push(date);
+    date = addCycle(date, subscription.cycle);
+  }
+  return dates;
+};
+
+const upcomingSundays = (now: Date, count: number) => {
+  const sundays: Date[] = [];
+  const date = new Date(now);
+  date.setHours(WEEKLY_HOUR, 0, 0, 0);
+  date.setDate(date.getDate() + ((7 + WEEKLY_DAY - date.getDay()) % 7));
+  if (date <= now) date.setDate(date.getDate() + 7);
+
+  for (let index = 0; index < count; index += 1) {
+    sundays.push(new Date(date));
+    date.setDate(date.getDate() + 7);
+  }
+  return sundays;
+};
+
+const buildWeeklySummaries = (
+  subscriptions: Subscription[],
+  language: Language,
+  now: Date,
+): Reminder[] => {
+  const templates = TEMPLATES[language];
+
+  return upcomingSundays(now, WEEKLY_AHEAD).flatMap((sunday) => {
+    const monday = new Date(sunday);
+    monday.setDate(monday.getDate() + 1);
+    const nextSunday = new Date(sunday);
+    nextSunday.setDate(nextSunday.getDate() + 7);
+    const fromIso = toIsoDate(monday);
+    const toIso = toIsoDate(nextSunday);
+
+    const items = subscriptions
+      .flatMap((subscription) =>
+        chargeDatesBetween(subscription, fromIso, toIso).map(() => ({
+          name: subscription.name,
+          amount: getOutflow(subscription),
+        })),
+      )
+      .sort((a, b) => b.amount - a.amount);
+
+    // Αν δεν φεύγει τίποτα, δεν στέλνουμε τίποτα.
+    if (items.length === 0) return [];
+
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    const shown = items.length > WEEKLY_MAX_NAMES ? items.slice(0, WEEKLY_MAX_NAMES - 1) : items;
+    const parts = shown.map((item) => `${item.name} ${formatEuro(item.amount, language)}`);
+    if (shown.length < items.length) {
+      parts.push(templates.weeklyMore.replace('{count}', String(items.length - shown.length)));
+    }
+
+    return [
+      {
+        id: `weekly-${toIsoDate(sunday)}`,
+        date: sunday,
+        title: templates.weeklyTitle,
+        body: fillList(templates.weeklyBody, {
+          amount: formatEuro(total, language),
+          list: parts.join(', '),
+        }),
+        tap: { kind: 'home' },
+      },
+    ];
+  });
+};
+
+// Κοινές συνδρομές: αν πληρώνεις εσύ, το βράδυ της χρέωσης σου θυμίζω να ζητήσεις τα μερίδια.
+// Αν πληρώνει άλλος, την προηγούμενη μέρα σου θυμίζω να του δώσεις το δικό σου.
+const buildShareReminders = (
+  subscriptions: Subscription[],
+  settings: ReminderSettings,
+  language: Language,
+): Reminder[] => {
+  const templates = TEMPLATES[language];
+
+  return subscriptions.flatMap((subscription): Reminder[] => {
+    const { share } = subscription;
+    if (!share) return [];
+
+    if (share.payer) {
+      return [
+        {
+          id: `${subscription.id}-share-give`,
+          date: buildReminderDate(subscription.nextChargeDate, 1, settings.reminderHour),
+          title: subscription.name,
+          body: fillList(templates.shareGive, {
+            amount: formatEuro(getMyCost(subscription), language),
+            name: share.payer,
+          }),
+        },
+      ];
+    }
+
+    const { others } = getShareBreakdown(subscription.price, share);
+    const date = parseIsoDate(subscription.nextChargeDate);
+    date.setHours(SHARE_REQUEST_HOUR, 0, 0, 0);
+
+    return [
+      {
+        id: `${subscription.id}-share-ask`,
+        date,
+        title: subscription.name,
+        body: templates.shareRequest.replace(
+          '{list}',
+          others.map((person) => `${person.name} ${formatEuro(person.amount, language)}`).join(', '),
+        ),
+        tap: {
+          kind: 'share',
+          subscriptionId: subscription.id,
+          chargeDate: subscription.nextChargeDate,
+        },
+      },
+    ];
+  });
+};
+
 const nextReminderTime = (hour: number, now: Date) => {
   const date = new Date(now);
   date.setHours(hour, 0, 0, 0);
@@ -341,7 +494,10 @@ export const buildReminders = (
 ): Reminder[] => {
   const language = resolveLanguage(settings);
   const trials = subscriptions.filter((subscription) => subscription.isTrial);
-  const regular = subscriptions.filter((subscription) => !subscription.isTrial);
+  // Όσες πληρώνει άλλος δεν χρεώνονται στη δική σου κάρτα: γι' αυτές έρχεται μόνο το «δώσε το μερίδιό σου».
+  const regular = subscriptions.filter(
+    (subscription) => !subscription.isTrial && !subscription.share?.payer,
+  );
 
   const grouped = [...groupByChargeDate(regular).entries()].flatMap(([chargeDate, group]) =>
     settings.reminderDays.map((daysBefore) =>
@@ -355,8 +511,14 @@ export const buildReminders = (
 
   const overdue = buildOverdueReminders(regular, settings.reminderHour, language, now);
   const trialReminders = buildTrialReminders(trials, settings, language);
+  const shared = buildShareReminders(
+    subscriptions.filter((subscription) => !subscription.isTrial),
+    settings,
+    language,
+  );
+  const weekly = buildWeeklySummaries(subscriptions, language, now);
 
-  return [...trialReminders, ...overdue, ...grouped, ...yearly]
+  return [...trialReminders, ...overdue, ...shared, ...grouped, ...yearly, ...weekly]
     .filter((reminder) => reminder.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, MAX_REMINDERS);
@@ -372,6 +534,7 @@ const runSync = async (db: SQLiteDatabase) => {
   try {
     if ((await getPermissionState()) !== 'granted') return;
     const [subscriptions, settings] = await Promise.all([getSubscriptions(db), getSettings(db)]);
+    setActiveCurrency(settings.currency ?? getDeviceCurrency());
     await replaceScheduledReminders(
       buildReminders(subscriptions, settings),
       resolveLanguage(settings),

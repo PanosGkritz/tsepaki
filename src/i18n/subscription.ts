@@ -13,7 +13,7 @@ export const subscriptionStrings = {
   'form.namePlaceholder': { el: 'π.χ. Netflix', en: 'e.g. Netflix' },
   'form.nameLabel': { el: 'Όνομα συνδρομής', en: 'Subscription name' },
   'form.price': { el: 'Τιμή', en: 'Price' },
-  'form.priceLabel': { el: 'Τιμή σε ευρώ', en: 'Price in euros' },
+  'form.priceLabel': { el: 'Τιμή', en: 'Price' },
   'form.plan': { el: 'Πακέτο', en: 'Plan' },
   'form.planHint': {
     el: 'Τιμές {date}. Αν πληρώνεις άλλο ποσό, άλλαξέ το από κάτω.',

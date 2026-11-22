@@ -2,6 +2,7 @@ import { getLocales } from 'expo-localization';
 import { catalogStrings } from './catalog';
 import { commonStrings } from './common';
 import { homeStrings } from './home';
+import { proStrings } from './pro';
 import { screenStrings } from './screens';
 import { settingsStrings } from './settings';
 import { subscriptionStrings } from './subscription';
@@ -17,6 +18,7 @@ const strings = {
   ...subscriptionStrings,
   ...screenStrings,
   ...settingsStrings,
+  ...proStrings,
 };
 
 export type StringKey = keyof typeof strings;

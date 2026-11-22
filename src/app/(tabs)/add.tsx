@@ -7,7 +7,7 @@ import { ServiceCard } from '../../components/ServiceCard';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { getCategoryLabel } from '../../data/categories';
 import {
-  CATALOG_PRICES_AS_OF,
+  getCatalogAsOf,
   SERVICE_FILTERS,
   getServiceName,
   services,
@@ -16,6 +16,7 @@ import {
 } from '../../data/services';
 import { getSubscriptions } from '../../db/subscriptions';
 import { LOCALES } from '../../i18n';
+import { CATALOG_CURRENCY } from '../../lib/currency';
 import { createStyles } from '../../lib/styles';
 import { usePreferences } from '../../providers/PreferencesProvider';
 
@@ -26,7 +27,7 @@ type Section = 'online' | 'local';
 export default function Add() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, language } = usePreferences();
+  const { colors, t, language, currency } = usePreferences();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const [addedIds, setAddedIds] = useState<string[]>([]);
@@ -144,9 +145,11 @@ export default function Add() {
           <>
             <Text style={styles.sectionTitle}>{t('add.popular')}</Text>
             {renderSection('online', onlineServices)}
-            <Text style={styles.note}>
-              {t('add.pricesNote', { date: CATALOG_PRICES_AS_OF[language] })}
-            </Text>
+            {currency === CATALOG_CURRENCY && (
+              <Text style={styles.note}>
+                {t('add.pricesNote', { date: getCatalogAsOf(language) })}
+              </Text>
+            )}
           </>
         )}
 

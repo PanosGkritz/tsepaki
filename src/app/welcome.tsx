@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import {
   Keyboard,
   Platform,
@@ -15,6 +15,12 @@ import { WelcomeIntro } from '../components/WelcomeIntro';
 import { fonts, radius, spacing } from '../constants/theme';
 import { saveSetting } from '../db/settings';
 import type { Language } from '../i18n';
+import {
+  MAIN_CURRENCIES,
+  OTHER_CURRENCIES,
+  getCurrencyLabel,
+  type CurrencyCode,
+} from '../lib/currency';
 import { requestPermission } from '../lib/notifications';
 import { syncReminders } from '../lib/reminders';
 import { createStyles } from '../lib/styles';
@@ -36,12 +42,15 @@ const askForNotifications = async () => {
 export default function Welcome() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, language, setLanguage } = usePreferences();
+  const { colors, t, language, setLanguage, currency, setCurrency } = usePreferences();
+  const [showOtherCurrencies, setShowOtherCurrencies] = useState(() =>
+    OTHER_CURRENCIES.some((code) => code === currency),
+  );
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   // Μετράμε μόνοι μας το πληκτρολόγιο: το κουμπί κάθεται ακριβώς από πάνω του
   // και η οθόνη κυλάει ώστε να φαίνεται το όνομα που γράφεις.
@@ -69,6 +78,7 @@ export default function Welcome() {
 
     setSaving(true);
     await setLanguage(language);
+    await setCurrency(currency);
     await saveSetting(db, 'userName', trimmedName);
     await saveSetting(db, 'onboardingDone', true);
     await askForNotifications();
@@ -130,6 +140,39 @@ export default function Welcome() {
           />
           <Text style={styles.hint}>{t('welcome.hint')}</Text>
         </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('currency.label')}</Text>
+          <View style={styles.currencyRow}>
+            {MAIN_CURRENCIES.map((code) => (
+              <CurrencyChip
+                key={code}
+                code={code}
+                isActive={currency === code}
+                onPress={() => setCurrency(code)}
+              />
+            ))}
+            {!showOtherCurrencies && (
+              <Pressable
+                onPress={() => setShowOtherCurrencies(true)}
+                accessibilityRole="button"
+                style={styles.currencyChip}
+              >
+                <Text style={styles.currencyText}>{t('currency.other')}</Text>
+              </Pressable>
+            )}
+            {showOtherCurrencies &&
+              OTHER_CURRENCIES.map((code) => (
+                <CurrencyChip
+                  key={code}
+                  code={code}
+                  isActive={currency === code}
+                  onPress={() => setCurrency(code)}
+                />
+              ))}
+          </View>
+          <Text style={styles.hint}>{t('currency.welcomeHint')}</Text>
+        </View>
       </ScrollView>
 
       <View style={[styles.footer, isKeyboardOpen && { paddingBottom: keyboardHeight + 12 }]}>
@@ -150,6 +193,25 @@ export default function Welcome() {
     </View>
   );
 }
+
+type CurrencyChipProps = { code: CurrencyCode; isActive: boolean; onPress: () => void };
+
+const CurrencyChip = ({ code, isActive, onPress }: CurrencyChipProps) => {
+  const styles = useStyles();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={code}
+      style={[styles.currencyChip, isActive && styles.languageChipActive]}
+    >
+      <Text style={[styles.currencyText, isActive && styles.languageTextActive]}>
+        {getCurrencyLabel(code)}
+      </Text>
+    </Pressable>
+  );
+};
 
 const useStyles = createStyles((colors) => ({
   screen: { flex: 1, backgroundColor: colors.background },
@@ -193,7 +255,18 @@ const useStyles = createStyles((colors) => ({
     fontSize: 17,
     fontFamily: fonts.regular,
   },
-  hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
+  hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
+  currencyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  currencyChip: {
+    height: 40,
+    minWidth: 52,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currencyText: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40 },
   button: {
     height: 54,

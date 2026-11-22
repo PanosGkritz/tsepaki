@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { ThemeMode } from '../constants/theme';
 import type { Language } from '../i18n';
+import { isCurrency, type CurrencyCode } from '../lib/currency';
 
 export type AppSettings = {
   userName: string;
@@ -12,6 +13,10 @@ export type AppSettings = {
   language: Language | null;
   hideAmounts: boolean;
   appLock: boolean;
+  currency: CurrencyCode | null;
+  countFullShared: boolean;
+  // Μόνο για δοκιμές του developer μέχρι να μπουν οι πληρωμές του Google Play.
+  devPro: boolean;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -24,6 +29,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: null,
   hideAmounts: false,
   appLock: false,
+  currency: null,
+  countFullShared: false,
+  devPro: false,
 };
 
 const parseJson = (text: string): unknown => {
@@ -62,6 +70,12 @@ const applyStoredValue = (settings: AppSettings, key: string, value: unknown): A
       return typeof value === 'boolean' ? { ...settings, hideAmounts: value } : settings;
     case 'appLock':
       return typeof value === 'boolean' ? { ...settings, appLock: value } : settings;
+    case 'currency':
+      return isCurrency(value) ? { ...settings, currency: value } : settings;
+    case 'countFullShared':
+      return typeof value === 'boolean' ? { ...settings, countFullShared: value } : settings;
+    case 'devPro':
+      return typeof value === 'boolean' ? { ...settings, devPro: value } : settings;
     default:
       return settings;
   }

@@ -6,10 +6,11 @@ import { toIsoDate } from './dates';
 
 const BACKUP_APP = 'tsepaki';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 // Το κλείδωμα αφορά τη συγκεκριμένη συσκευή, οπότε δεν μεταφέρεται.
-const DEVICE_ONLY_SETTINGS = ['appLock'];
+// Ούτε οι τιμές του καταλόγου (ξανακατεβαίνουν) ούτε ο διακόπτης Pro του developer.
+const DEVICE_ONLY_SETTINGS = ['appLock', 'catalogPrices', 'catalogCheckedAt', 'devPro'];
 
 type SubscriptionBackupRow = {
   id: string;
@@ -26,7 +27,11 @@ type SubscriptionBackupRow = {
   payment_mode: string;
   card: string | null;
   is_trial: number;
+  review_after: string | null;
+  share: string | null;
 };
+
+type SharePaymentBackupRow = { subscription_id: string; charge_date: string; person: string };
 
 type ChargeBackupRow = {
   subscription_id: string;
@@ -45,6 +50,7 @@ export type Backup = {
   subscriptions: SubscriptionBackupRow[];
   charges: ChargeBackupRow[];
   settings: SettingBackupRow[];
+  sharePayments: SharePaymentBackupRow[];
 };
 
 export type BackupSummary = {
@@ -57,16 +63,19 @@ export class InvalidBackupError extends Error {}
 export class NewerBackupError extends Error {}
 
 export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
-  const [subscriptions, charges, settings] = await Promise.all([
+  const [subscriptions, charges, settings, sharePayments] = await Promise.all([
     db.getAllAsync<SubscriptionBackupRow>(
       `SELECT id, name, price_cents, cycle, next_charge_date, color, category, created_at,
-              service_id, domain, cancelled_at, payment_mode, card, is_trial
+              service_id, domain, cancelled_at, payment_mode, card, is_trial, review_after, share
        FROM subscriptions`,
     ),
     db.getAllAsync<ChargeBackupRow>(
       'SELECT subscription_id, amount_cents, charge_date, status FROM charges ORDER BY charge_date',
     ),
     db.getAllAsync<SettingBackupRow>('SELECT key, value FROM settings'),
+    db.getAllAsync<SharePaymentBackupRow>(
+      'SELECT subscription_id, charge_date, person FROM share_payments',
+    ),
   ]);
 
   const backup: Backup = {
@@ -77,6 +86,7 @@ export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
     subscriptions,
     charges,
     settings: settings.filter((row) => !DEVICE_ONLY_SETTINGS.includes(row.key)),
+    sharePayments,
   };
 
   const file = new File(Paths.cache, `tsepaki-backup-${toIsoDate(new Date())}.json`);
@@ -111,6 +121,7 @@ export const pickBackup = async (): Promise<BackupSummary | null> => {
 
 export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
   await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM share_payments');
     await db.runAsync('DELETE FROM charges');
     await db.runAsync('DELETE FROM subscriptions');
 
@@ -118,8 +129,8 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
       await db.runAsync(
         `INSERT INTO subscriptions (id, name, price_cents, cycle, next_charge_date, color, category,
                                     created_at, service_id, domain, cancelled_at, payment_mode, card,
-                                    is_trial)
-         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?)`,
+                                    is_trial, review_after, share)
+         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?, ?, ?)`,
         row.id,
         row.name,
         row.price_cents,
@@ -134,6 +145,18 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
         row.payment_mode,
         row.card,
         row.is_trial,
+        row.review_after,
+        row.share,
+      );
+    }
+
+    for (const row of backup.sharePayments) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO share_payments (subscription_id, charge_date, person)
+         VALUES (?, ?, ?)`,
+        row.subscription_id,
+        row.charge_date,
+        row.person,
       );
     }
 
@@ -184,6 +207,8 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     payment_mode,
     card,
     is_trial,
+    review_after,
+    share,
   } = value;
 
   if (
@@ -198,7 +223,9 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     !isOptionalString(service_id) ||
     !isOptionalString(domain) ||
     !isOptionalString(cancelled_at) ||
-    !isOptionalString(card)
+    !isOptionalString(card) ||
+    !isOptionalString(review_after) ||
+    !isOptionalString(share)
   ) {
     return null;
   }
@@ -218,7 +245,16 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     payment_mode: payment_mode === 'manual' ? 'manual' : 'auto',
     card: card ?? null,
     is_trial: is_trial === 1 ? 1 : 0,
+    review_after: review_after ?? null,
+    share: share ?? null,
   };
+};
+
+const toSharePaymentRow = (value: unknown): SharePaymentBackupRow | null => {
+  if (!isRecord(value)) return null;
+  const { subscription_id, charge_date, person } = value;
+  if (!isString(subscription_id) || !isString(charge_date) || !isString(person)) return null;
+  return { subscription_id, charge_date, person };
 };
 
 const toChargeRow = (value: unknown): ChargeBackupRow | null => {
@@ -262,6 +298,9 @@ const parseBackup = (text: string): Backup => {
     ids.has(row.subscription_id),
   );
   const settings = data.settings === undefined ? [] : parseRows(data.settings, toSettingRow);
+  const sharePayments = (
+    data.sharePayments === undefined ? [] : parseRows(data.sharePayments, toSharePaymentRow)
+  ).filter((row) => ids.has(row.subscription_id));
 
   return {
     app: BACKUP_APP,
@@ -271,5 +310,6 @@ const parseBackup = (text: string): Backup => {
     subscriptions,
     charges,
     settings,
+    sharePayments,
   };
 };

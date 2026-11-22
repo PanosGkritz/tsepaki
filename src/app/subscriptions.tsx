@@ -36,7 +36,7 @@ const LIST_TRANSITION = LinearTransition.duration(220);
 export default function Subscriptions() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { colors, t, language } = usePreferences();
+  const { colors, t, language, countFullShared } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [removing, setRemoving] = useState<Removing | null>(null);
 
@@ -80,7 +80,7 @@ export default function Subscriptions() {
       },
     ]);
 
-  const totals = getCostTotals(subscriptions);
+  const totals = getCostTotals(subscriptions, countFullShared);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>

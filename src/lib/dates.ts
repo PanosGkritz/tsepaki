@@ -29,9 +29,12 @@ const startOfDay = (date: Date) =>
 export const daysUntil = (iso: string, today = new Date()) =>
   Math.round((parseIsoDate(iso).getTime() - startOfDay(today).getTime()) / DAY_MS);
 
-export const addCycle = (iso: string, cycle: BillingCycle) => {
+export const addCycle = (iso: string, cycle: BillingCycle) =>
+  addMonths(iso, cycle === 'yearly' ? 12 : 1);
+
+// Ίδια μέρα μετά από Χ μήνες. Αν ο μήνας είναι μικρότερος, η τελευταία του μέρα (31/1 → 28/2).
+export const addMonths = (iso: string, months: number) => {
   const date = parseIsoDate(iso);
-  const months = cycle === 'yearly' ? 12 : 1;
   const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
   const lastDayOfMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
   target.setDate(Math.min(date.getDate(), lastDayOfMonth));

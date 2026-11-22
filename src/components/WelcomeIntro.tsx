@@ -25,12 +25,11 @@ const FEATURE_DELAY = 420;
 const FEATURE_STEP = 130;
 
 type WelcomeIntroProps = {
-  name: string;
   onContinue: () => void;
 };
 
 // Μεταβατική οθόνη μετά την υποδοχή: τι κάνει η εφαρμογή, με απαλή είσοδο ένα-ένα.
-export const WelcomeIntro = ({ name, onContinue }: WelcomeIntroProps) => {
+export const WelcomeIntro = ({ onContinue }: WelcomeIntroProps) => {
   const styles = useStyles();
   const { t } = usePreferences();
   const buttonDelay = FEATURE_DELAY + FEATURES.length * FEATURE_STEP + 150;
@@ -45,7 +44,7 @@ export const WelcomeIntro = ({ name, onContinue }: WelcomeIntroProps) => {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(150).duration(380)} style={styles.heading}>
-          <Text style={styles.title}>{t('intro.title', { name })}</Text>
+          <Text style={styles.title}>{t('intro.title')}</Text>
           <Text style={styles.subtitle}>{t('intro.subtitle')}</Text>
         </Animated.View>
 

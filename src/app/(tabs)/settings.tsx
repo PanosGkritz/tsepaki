@@ -28,6 +28,7 @@ import {
   restoreBackup,
   type BackupSummary,
 } from '../../lib/backup';
+import { ALL_CURRENCIES, getCurrencyLabel, getDeviceCurrency } from '../../lib/currency';
 import { formatChargeDay, toIsoDate } from '../../lib/dates';
 import { notifyDataChanged } from '../../lib/events';
 import { authenticate, canUseLock } from '../../lib/lock';
@@ -87,10 +88,16 @@ export default function Settings() {
     themeMode,
     language,
     appLock,
+    currency,
+    isPro,
+    countFullShared,
     setThemeMode,
     setLanguage,
     setHideAmounts,
     setAppLock,
+    setCurrency,
+    setCountFullShared,
+    setDevPro,
   } = usePreferences();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [nameDraft, setNameDraft] = useState('');
@@ -146,6 +153,17 @@ export default function Settings() {
   const changeLanguage = async (nextLanguage: Language) => {
     await setLanguage(nextLanguage);
     await syncReminders(db);
+    await refresh();
+  };
+
+  const changeCurrency = async (nextCurrency: typeof currency) => {
+    await setCurrency(nextCurrency);
+    await syncReminders(db);
+    await refresh();
+  };
+
+  const toggleDevPro = async (enabled: boolean) => {
+    await setDevPro(enabled);
     await refresh();
   };
 
@@ -216,6 +234,8 @@ export default function Settings() {
       await setThemeMode(restored.themeMode);
       if (restored.language) await setLanguage(restored.language);
       await setHideAmounts(restored.hideAmounts);
+      await setCurrency(restored.currency ?? getDeviceCurrency());
+      await setCountFullShared(restored.countFullShared);
       await syncReminders(db);
       notifyDataChanged();
       const loadedSettings = await refresh();
@@ -316,6 +336,55 @@ export default function Settings() {
           ))}
         </View>
       </Section>
+
+      <Section title={t('currency.label')}>
+        <View style={styles.chips}>
+          {ALL_CURRENCIES.map((code) => (
+            <Chip
+              key={code}
+              label={getCurrencyLabel(code)}
+              isActive={currency === code}
+              onPress={() => changeCurrency(code)}
+            />
+          ))}
+        </View>
+        <Text style={styles.hint}>{t('currency.settingsHint')}</Text>
+      </Section>
+
+      {(isPro || __DEV__) && (
+        <Section title={t('settings.pro')}>
+          {/* Μόνο για τον developer: ανοίγει το Pro στο Expo Go μέχρι να μπουν οι πληρωμές. */}
+          {__DEV__ && (
+            <>
+              <View style={styles.row}>
+                <Text style={[styles.rowLabel, styles.flex]}>{t('settings.devPro')}</Text>
+                <Switch
+                  value={isPro}
+                  onValueChange={toggleDevPro}
+                  trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <Text style={styles.hint}>{t('settings.devProHint')}</Text>
+            </>
+          )}
+
+          {isPro && (
+            <>
+              <View style={styles.row}>
+                <Text style={[styles.rowLabel, styles.flex]}>{t('settings.countFullShared')}</Text>
+                <Switch
+                  value={countFullShared}
+                  onValueChange={setCountFullShared}
+                  trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <Text style={styles.hint}>{t('settings.countFullSharedHint')}</Text>
+            </>
+          )}
+        </Section>
+      )}
 
       <Section title={t('settings.security')}>
         <View style={styles.row}>

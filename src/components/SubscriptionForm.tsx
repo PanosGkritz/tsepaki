@@ -16,11 +16,12 @@ import {
 import { fonts, radius, spacing } from '../constants/theme';
 import { CATEGORIES, getCategoryLabel, isCategory, type Category } from '../data/categories';
 import {
-  CATALOG_PRICES_AS_OF,
+  getCatalogAsOf,
   getDefaultPlan,
   getPlanCycle,
   getPlanPrice,
   getServiceName,
+  getServicePlans,
   type ServicePlan,
   type ServiceTemplate,
 } from '../data/services';
@@ -28,7 +29,8 @@ import { getCardLabels } from '../db/subscriptions';
 import { LOCALES, type Language, type StringKey } from '../i18n';
 import { pickColor } from '../lib/colors';
 import { formatFullDate, parseIsoDate, toIsoDate } from '../lib/dates';
-import { formatMoney } from '../lib/format';
+import { CATALOG_CURRENCY } from '../lib/currency';
+import { formatMoney, getCurrencySymbol } from '../lib/format';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import type {
@@ -38,6 +40,13 @@ import type {
   Subscription,
 } from '../types/subscription';
 import { ServiceLogo } from './ServiceLogo';
+import {
+  ShareEditor,
+  draftToShare,
+  isShareDraftValid,
+  shareToDraft,
+  type ShareDraft,
+} from './ShareEditor';
 
 type SegmentOption<T extends string> = { value: T; key: StringKey };
 
@@ -97,11 +106,13 @@ export const SubscriptionForm = ({
 }: SubscriptionFormProps) => {
   const styles = useStyles();
   const db = useSQLiteContext();
-  const { colors, isDark, t, language } = usePreferences();
+  const { colors, isDark, t, language, currency, isPro } = usePreferences();
+  // Οι τιμές του καταλόγου είναι σε ευρώ: σε άλλο νόμισμα ο χρήστης γράφει μόνος του το ποσό.
+  const usesCatalogPrices = currency === CATALOG_CURRENCY;
   const [name, setName] = useState(
     initial?.name ?? (service ? getServiceName(service, t) : ''),
   );
-  const defaultPlan = initial ? undefined : getDefaultPlan(service);
+  const defaultPlan = initial || !usesCatalogPrices ? undefined : getDefaultPlan(service);
   const defaultCycle = defaultPlan ? getPlanCycle(defaultPlan, 'monthly') : 'monthly';
   const defaultPrice = defaultPlan ? getPlanPrice(defaultPlan, defaultCycle) : undefined;
   const [priceText, setPriceText] = useState(() => {
@@ -118,6 +129,12 @@ export const SubscriptionForm = ({
   );
   const [isTrial, setIsTrial] = useState(initial?.isTrial ?? false);
   const [card, setCard] = useState(initial?.card ?? '');
+  const [isShared, setIsShared] = useState(Boolean(initial?.share));
+  const [shareDraft, setShareDraft] = useState<ShareDraft>(() =>
+    shareToDraft(initial?.share, language),
+  );
+  // Η κοινή συνδρομή είναι Pro. Όποιος την έχει ήδη, συνεχίζει να τη βλέπει και να την αλλάζει.
+  const canShare = isPro || Boolean(initial?.share);
   const [savedCards, setSavedCards] = useState<string[]>([]);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
@@ -131,7 +148,7 @@ export const SubscriptionForm = ({
   const trimmedCard = card.trim();
   const trimmedName = name.trim();
   const color = service?.color ?? initial?.color ?? pickColor(trimmedName || '?');
-  const plans = service?.plans ?? [];
+  const plans = usesCatalogPrices ? getServicePlans(service) : [];
   const selectedPlan = plans.find((plan) => getPlanPrice(plan, cycle) === price);
 
   const selectPlan = (plan: ServicePlan) => {
@@ -167,6 +184,14 @@ export const SubscriptionForm = ({
       setError('form.errorCard');
       return;
     }
+    if (isShared && shareDraft.people.length === 0) {
+      setError('share.errorPeople');
+      return;
+    }
+    if (isShared && !isShareDraftValid(shareDraft, price)) {
+      setError('share.errorAmounts');
+      return;
+    }
 
     setError(null);
     setSaving(true);
@@ -184,6 +209,7 @@ export const SubscriptionForm = ({
         domain: service?.domain ?? initial?.domain,
         card: trimmedCard || undefined,
         isTrial,
+        share: isShared ? draftToShare(shareDraft) : undefined,
       });
     } catch {
       setError('form.errorSave');
@@ -257,14 +283,14 @@ export const SubscriptionForm = ({
               })}
             </View>
             <Text style={styles.hint}>
-              {t('form.planHint', { date: CATALOG_PRICES_AS_OF[language] })}
+              {t('form.planHint', { date: getCatalogAsOf(language) })}
             </Text>
           </Field>
         )}
 
         {plans.length === 1 && (
           <Text style={styles.hint}>
-            {t('form.planHint', { date: CATALOG_PRICES_AS_OF[language] })}
+            {t('form.planHint', { date: getCatalogAsOf(language) })}
           </Text>
         )}
 
@@ -279,7 +305,7 @@ export const SubscriptionForm = ({
               style={[styles.input, styles.priceInput]}
               accessibilityLabel={t('form.priceLabel')}
             />
-            <Text style={styles.currency}>€</Text>
+            <Text style={styles.currency}>{getCurrencySymbol(language)}</Text>
           </View>
         </Field>
 
@@ -307,6 +333,25 @@ export const SubscriptionForm = ({
             accessibilityLabel={t('form.trial')}
           />
         </View>
+
+        {canShare && (
+          <View style={styles.field}>
+            <View style={styles.trialRow}>
+              <View style={styles.trialInfo}>
+                <Text style={styles.trialLabel}>{t('share.toggle')}</Text>
+                <Text style={styles.hint}>{t('share.toggleHint')}</Text>
+              </View>
+              <Switch
+                value={isShared}
+                onValueChange={setIsShared}
+                trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel={t('share.toggle')}
+              />
+            </View>
+            {isShared && <ShareEditor draft={shareDraft} price={price} onChange={setShareDraft} />}
+          </View>
+        )}
 
         <Field label={t(isTrial ? 'form.trialEnds' : 'form.nextCharge')}>
           {Platform.OS === 'ios' ? (

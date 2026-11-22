@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "asOf": {
+    "el": "Νοεμβρίου 2026",
+    "en": "November 2026"
+  },
+  "services": {
+    "netflix": [
+      {
+        "name": "Basic",
+        "monthly": 8.99
+      },
+      {
+        "name": "Standard",
+        "monthly": 12.49,
+        "isDefault": true
+      },
+      {
+        "name": "Premium",
+        "monthly": 15.99
+      }
+    ],
+    "spotify": [
+      {
+        "name": "Individual",
+        "monthly": 8.99,
+        "isDefault": true
+      },
+      {
+        "name": "Student",
+        "monthly": 4.99
+      },
+      {
+        "name": "Duo",
+        "monthly": 11.99
+      },
+      {
+        "name": "Family",
+        "monthly": 14.99
+      }
+    ],
+    "youtube": [
+      {
+        "name": "Premium",
+        "monthly": 10.99,
+        "isDefault": true
+      },
+      {
+        "name": "Lite",
+        "monthly": 6.49
+      },
+      {
+        "name": "Family",
+        "monthly": 19.99
+      },
+      {
+        "name": "Student",
+        "monthly": 6.99
+      }
+    ],
+    "disney": [
+      {
+        "name": "Standard",
+        "monthly": 10.99,
+        "yearly": 109.9,
+        "isDefault": true
+      },
+      {
+        "name": "Premium",
+        "monthly": 15.99,
+        "yearly": 159.9
+      }
+    ],
+    "hbomax": [
+      {
+        "name": "Standard",
+        "monthly": 10.99,
+        "isDefault": true
+      },
+      {
+        "name": "Premium",
+        "monthly": 15.99
+      }
+    ],
+    "prime": [
+      {
+        "name": "Prime Video",
+        "monthly": 6.99,
+        "isDefault": true
+      }
+    ],
+    "appletv": [
+      {
+        "name": "Apple TV",
+        "monthly": 9.99,
+        "isDefault": true
+      }
+    ],
+    "applemusic": [
+      {
+        "name": "Individual",
+        "monthly": 8.99,
+        "isDefault": true
+      },
+      {
+        "name": "Student",
+        "monthly": 4.99
+      },
+      {
+        "name": "Family",
+        "monthly": 14.99
+      }
+    ],
+    "chatgpt": [
+      {
+        "name": "Plus",
+        "monthly": 23,
+        "isDefault": true
+      },
+      {
+        "name": "Go",
+        "monthly": 8
+      }
+    ],
+    "gemini": [
+      {
+        "name": "Google AI Plus",
+        "monthly": 4.99
+      },
+      {
+        "name": "Google AI Pro",
+        "monthly": 22.99,
+        "isDefault": true
+      }
+    ],
+    "xbox": [
+      {
+        "name": "Essential",
+        "monthly": 8.99
+      },
+      {
+        "name": "Premium",
+        "monthly": 12.99,
+        "isDefault": true
+      },
+      {
+        "name": "Ultimate",
+        "monthly": 20.99
+      }
+    ],
+    "psplus": [
+      {
+        "name": "Essential",
+        "monthly": 9.99,
+        "yearly": 71.99,
+        "isDefault": true
+      },
+      {
+        "name": "Extra",
+        "monthly": 15.99,
+        "yearly": 125.99
+      },
+      {
+        "name": "Premium",
+        "monthly": 18.99,
+        "yearly": 151.99
+      }
+    ],
+    "icloud": [
+      {
+        "name": "50 GB",
+        "monthly": 0.99,
+        "isDefault": true
+      },
+      {
+        "name": "200 GB",
+        "monthly": 2.99
+      },
+      {
+        "name": "2 TB",
+        "monthly": 9.99
+      }
+    ],
+    "googleone": [
+      {
+        "name": "100 GB",
+        "monthly": 1.99,
+        "isDefault": true
+      },
+      {
+        "name": "2 TB",
+        "monthly": 9.99
+      }
+    ],
+    "appleone": [
+      {
+        "name": "Individual",
+        "monthly": 16.95,
+        "isDefault": true
+      },
+      {
+        "name": "Family",
+        "monthly": 21.95
+      }
+    ],
+    "microsoft365": [
+      {
+        "name": "Personal",
+        "yearly": 99,
+        "isDefault": true
+      },
+      {
+        "name": "Family",
+        "yearly": 129
+      }
+    ],
+    "skroutz": [
+      {
+        "name": "Plus",
+        "monthly": 4,
+        "yearly": 25,
+        "isDefault": true
+      }
+    ],
+    "efood": [
+      {
+        "name": "pro",
+        "monthly": 3.99,
+        "yearly": 34.99,
+        "isDefault": true
+      }
+    ],
+    "wolt": [
+      {
+        "name": "Wolt+",
+        "monthly": 3.99,
+        "isDefault": true
+      }
+    ],
+    "publicplus": [
+      {
+        "name": "Public+ Delivery",
+        "yearly": 9.99,
+        "isDefault": true
+      }
+    ]
+  }
+}
