@@ -7,6 +7,8 @@ import type { Subscription } from '../types/subscription';
 import { getDeviceCurrency } from './currency';
 import { addCycle, parseIsoDate, toIsoDate } from './dates';
 import { formatEuro, setActiveCurrency } from './format';
+import { getPendingIncreases, type PriceChange } from '../db/priceChanges';
+import { isProEnabled } from './pro';
 import { getMyCost, getOutflow, getShareBreakdown } from './share';
 import { getPermissionState, replaceScheduledReminders, type Reminder } from './notifications';
 
@@ -47,6 +49,7 @@ type Templates = {
   weeklyMore: string;
   shareRequest: string;
   shareGive: string;
+  priceUp: string;
 };
 
 const TEMPLATES: Record<Language, Templates> = {
@@ -100,6 +103,7 @@ const TEMPLATES: Record<Language, Templates> = {
     weeklyMore: 'και άλλες {count}',
     shareRequest: 'Πέρασε η χρέωση. Ζήτα τα μερίδια: {list}.',
     shareGive: 'Αύριο χρεώνεται. Δώσε το μερίδιό σου ({amount}) σε όποιον πληρώνει: {name}.',
+    priceUp: 'Ανέβηκε από {old} σε {new}. Το κρατάς;',
   },
   en: {
     weekdayOn: [
@@ -151,6 +155,7 @@ const TEMPLATES: Record<Language, Templates> = {
     weeklyMore: '{count} more',
     shareRequest: 'The charge went through. Ask for the shares: {list}.',
     shareGive: 'It renews tomorrow. Give your share ({amount}) to {name}, who pays for it.',
+    priceUp: 'Went up from {old} to {new}. Keeping it?',
   },
 };
 
@@ -496,10 +501,49 @@ const buildOverdueReminders = (
 export const resolveLanguage = (settings: Pick<AppSettings, 'language'>) =>
   settings.language ?? getDeviceLanguage();
 
+// Pro: μία ειδοποίηση για κάθε αύξηση τιμής από τον κατάλογο, στην επόμενη ώρα υπενθυμίσεων.
+// Μόνο για αυξήσεις που βρέθηκαν σήμερα ή χθες, ώστε να μην έρχεται κάθε μέρα.
+const buildPriceReminders = (
+  increases: PriceChange[],
+  subscriptions: Subscription[],
+  clock: number,
+  language: Language,
+  now: Date,
+): Reminder[] => {
+  const date = nextReminderTime(clock, now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const dayAfterLatest = (changedOn: string) => {
+    const limit = parseIsoDate(changedOn);
+    limit.setDate(limit.getDate() + 1);
+    return toIsoDate(limit);
+  };
+
+  return increases.flatMap((change): Reminder[] => {
+    const subscription = subscriptions.find((item) => item.id === change.subscriptionId);
+    if (!subscription || change.changedOn < toIsoDate(yesterday)) return [];
+    if (toIsoDate(date) > dayAfterLatest(change.changedOn)) return [];
+
+    return [
+      {
+        id: `price-${change.id}`,
+        date,
+        title: subscription.name,
+        body: fillList(TEMPLATES[language].priceUp, {
+          old: formatEuro(change.oldPrice, language),
+          new: formatEuro(change.newPrice, language),
+        }),
+        tap: { kind: 'home' },
+      },
+    ];
+  });
+};
+
 export const buildReminders = (
   subscriptions: Subscription[],
   settings: ReminderSettings,
   now = new Date(),
+  increases: PriceChange[] = [],
 ): Reminder[] => {
   const language = resolveLanguage(settings);
   const trials = subscriptions.filter((subscription) => subscription.isTrial);
@@ -526,8 +570,9 @@ export const buildReminders = (
     language,
   );
   const weekly = buildWeeklySummaries(subscriptions, language, now);
+  const prices = buildPriceReminders(increases, subscriptions, toClock(settings), language, now);
 
-  return [...trialReminders, ...overdue, ...shared, ...grouped, ...yearly, ...weekly]
+  return [...prices, ...trialReminders, ...overdue, ...shared, ...grouped, ...yearly, ...weekly]
     .filter((reminder) => reminder.date > now)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, MAX_REMINDERS);
@@ -544,8 +589,9 @@ const runSync = async (db: SQLiteDatabase) => {
     if ((await getPermissionState()) !== 'granted') return;
     const [subscriptions, settings] = await Promise.all([getSubscriptions(db), getSettings(db)]);
     setActiveCurrency(settings.currency ?? getDeviceCurrency());
+    const increases = isProEnabled(settings) ? await getPendingIncreases(db) : [];
     await replaceScheduledReminders(
-      buildReminders(subscriptions, settings),
+      buildReminders(subscriptions, settings, new Date(), increases),
       resolveLanguage(settings),
     );
   } catch {

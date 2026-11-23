@@ -14,6 +14,7 @@ import {
 } from '../i18n';
 import { getDeviceCurrency, type CurrencyCode } from '../lib/currency';
 import { setActiveCurrency } from '../lib/format';
+import { isProEnabled } from '../lib/pro';
 
 type Preferences = {
   colors: ThemeColors;
@@ -81,8 +82,7 @@ export const PreferencesProvider = ({ children }: PreferencesProviderProps) => {
       appLock,
       currency,
       countFullShared,
-      // Το Pro ανοίγει προς το παρόν μόνο από τον διακόπτη του developer (Expo Go).
-      isPro: __DEV__ && devPro,
+      isPro: isProEnabled({ devPro }),
       t: (key: StringKey, params?: TranslateParams) => translate(language, key, params),
       setThemeMode: async (mode) => {
         setThemeModeState(mode);
@@ -133,4 +133,4 @@ export const usePreferences = () => {
 
 export const useTheme = () => usePreferences().colors;
 
-export const useT = () => usePreferences().t;
+export const useT = () => usePreferences().t;

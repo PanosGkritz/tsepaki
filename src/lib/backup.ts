@@ -6,7 +6,7 @@ import { toIsoDate } from './dates';
 
 const BACKUP_APP = 'tsepaki';
 const BACKUP_VERSION = 1;
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 // Το κλείδωμα αφορά τη συγκεκριμένη συσκευή, οπότε δεν μεταφέρεται.
 // Ούτε οι τιμές του καταλόγου (ξανακατεβαίνουν) ούτε ο διακόπτης Pro του developer.
@@ -29,9 +29,19 @@ type SubscriptionBackupRow = {
   is_trial: number;
   review_after: string | null;
   share: string | null;
+  plan: string | null;
 };
 
 type SharePaymentBackupRow = { subscription_id: string; charge_date: string; person: string };
+
+type PriceChangeBackupRow = {
+  subscription_id: string;
+  changed_on: string;
+  old_cents: number;
+  new_cents: number;
+  source: string;
+  status: string;
+};
 
 type ChargeBackupRow = {
   subscription_id: string;
@@ -51,6 +61,7 @@ export type Backup = {
   charges: ChargeBackupRow[];
   settings: SettingBackupRow[];
   sharePayments: SharePaymentBackupRow[];
+  priceChanges: PriceChangeBackupRow[];
 };
 
 export type BackupSummary = {
@@ -63,10 +74,10 @@ export class InvalidBackupError extends Error {}
 export class NewerBackupError extends Error {}
 
 export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
-  const [subscriptions, charges, settings, sharePayments] = await Promise.all([
+  const [subscriptions, charges, settings, sharePayments, priceChanges] = await Promise.all([
     db.getAllAsync<SubscriptionBackupRow>(
       `SELECT id, name, price_cents, cycle, next_charge_date, color, category, created_at,
-              service_id, domain, cancelled_at, payment_mode, card, is_trial, review_after, share
+              service_id, domain, cancelled_at, payment_mode, card, is_trial, review_after, share, plan
        FROM subscriptions`,
     ),
     db.getAllAsync<ChargeBackupRow>(
@@ -75,6 +86,10 @@ export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
     db.getAllAsync<SettingBackupRow>('SELECT key, value FROM settings'),
     db.getAllAsync<SharePaymentBackupRow>(
       'SELECT subscription_id, charge_date, person FROM share_payments',
+    ),
+    db.getAllAsync<PriceChangeBackupRow>(
+      `SELECT subscription_id, changed_on, old_cents, new_cents, source, status
+       FROM price_changes`,
     ),
   ]);
 
@@ -87,6 +102,7 @@ export const exportBackup = async (db: SQLiteDatabase, dialogTitle: string) => {
     charges,
     settings: settings.filter((row) => !DEVICE_ONLY_SETTINGS.includes(row.key)),
     sharePayments,
+    priceChanges,
   };
 
   const file = new File(Paths.cache, `tsepaki-backup-${toIsoDate(new Date())}.json`);
@@ -122,6 +138,7 @@ export const pickBackup = async (): Promise<BackupSummary | null> => {
 export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM share_payments');
+    await db.runAsync('DELETE FROM price_changes');
     await db.runAsync('DELETE FROM charges');
     await db.runAsync('DELETE FROM subscriptions');
 
@@ -129,8 +146,8 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
       await db.runAsync(
         `INSERT INTO subscriptions (id, name, price_cents, cycle, next_charge_date, color, category,
                                     created_at, service_id, domain, cancelled_at, payment_mode, card,
-                                    is_trial, review_after, share)
-         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                    is_trial, review_after, share, plan)
+         VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         row.id,
         row.name,
         row.price_cents,
@@ -147,6 +164,21 @@ export const restoreBackup = async (db: SQLiteDatabase, backup: Backup) => {
         row.is_trial,
         row.review_after,
         row.share,
+        row.plan,
+      );
+    }
+
+    for (const row of backup.priceChanges) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO price_changes
+           (subscription_id, changed_on, old_cents, new_cents, source, status)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        row.subscription_id,
+        row.changed_on,
+        row.old_cents,
+        row.new_cents,
+        row.source,
+        row.status,
       );
     }
 
@@ -209,6 +241,7 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     is_trial,
     review_after,
     share,
+    plan,
   } = value;
 
   if (
@@ -225,6 +258,7 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     !isOptionalString(cancelled_at) ||
     !isOptionalString(card) ||
     !isOptionalString(review_after) ||
+    !isOptionalString(plan) ||
     !isOptionalString(share)
   ) {
     return null;
@@ -246,8 +280,30 @@ const toSubscriptionRow = (value: unknown): SubscriptionBackupRow | null => {
     card: card ?? null,
     is_trial: is_trial === 1 ? 1 : 0,
     review_after: review_after ?? null,
+    plan: plan ?? null,
     share: share ?? null,
   };
+};
+
+const PRICE_SOURCES = ['manual', 'catalog'];
+const PRICE_STATUSES = ['applied', 'pending', 'dismissed'];
+
+const toPriceChangeRow = (value: unknown): PriceChangeBackupRow | null => {
+  if (!isRecord(value)) return null;
+  const { subscription_id, changed_on, old_cents, new_cents, source, status } = value;
+  if (
+    !isString(subscription_id) ||
+    !isString(changed_on) ||
+    !isInteger(old_cents) ||
+    !isInteger(new_cents) ||
+    !isString(source) ||
+    !PRICE_SOURCES.includes(source) ||
+    !isString(status) ||
+    !PRICE_STATUSES.includes(status)
+  ) {
+    return null;
+  }
+  return { subscription_id, changed_on, old_cents, new_cents, source, status };
 };
 
 const toSharePaymentRow = (value: unknown): SharePaymentBackupRow | null => {
@@ -301,6 +357,9 @@ const parseBackup = (text: string): Backup => {
   const sharePayments = (
     data.sharePayments === undefined ? [] : parseRows(data.sharePayments, toSharePaymentRow)
   ).filter((row) => ids.has(row.subscription_id));
+  const priceChanges = (
+    data.priceChanges === undefined ? [] : parseRows(data.priceChanges, toPriceChangeRow)
+  ).filter((row) => ids.has(row.subscription_id));
 
   return {
     app: BACKUP_APP,
@@ -311,5 +370,6 @@ const parseBackup = (text: string): Backup => {
     charges,
     settings,
     sharePayments,
+    priceChanges,
   };
 };

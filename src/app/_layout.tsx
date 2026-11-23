@@ -65,6 +65,11 @@ const AppStack = () => {
         <Stack.Screen name="subscriptions" />
         <Stack.Screen name="subscription/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="subscription/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="wrapped"
+          options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}
+        />
       </Stack>
     </>
   );

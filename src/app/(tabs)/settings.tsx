@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { AppLogo } from '../../components/AppLogo';
+import { ProBadge } from '../../components/ProCard';
 import { ReminderTimePicker } from '../../components/ReminderTimePicker';
 import { FEEDBACK_EMAIL, PLAY_STORE_URL, PRIVACY_POLICY_URL } from '../../constants/app';
 import { fonts, radius, spacing, type ThemeMode } from '../../constants/theme';
@@ -359,40 +360,51 @@ export default function Settings() {
         <Text style={styles.hint}>{t('currency.settingsHint')}</Text>
       </Section>
 
-      {(isPro || __DEV__) && (
-        <Section title={t('settings.pro')}>
-          {/* Μόνο για τον developer: ανοίγει το Pro στο Expo Go μέχρι να μπουν οι πληρωμές. */}
-          {__DEV__ && (
-            <>
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, styles.flex]}>{t('settings.devPro')}</Text>
-                <Switch
-                  value={isPro}
-                  onValueChange={toggleDevPro}
-                  trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              <Text style={styles.hint}>{t('settings.devProHint')}</Text>
-            </>
+      <Section title={t('settings.pro')}>
+        <Pressable
+          onPress={() => router.push('/pro')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.row, pressed && styles.pressedRow]}
+        >
+          <Text style={[styles.rowLabel, styles.flex]}>{t('pro.settingsRow')}</Text>
+          {isPro ? (
+            <Text style={[styles.rowValue, styles.rowValueOn]}>{t('pro.settingsActive')}</Text>
+          ) : (
+            <ProBadge id="settingsProBadge" />
           )}
+        </Pressable>
 
-          {isPro && (
-            <>
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, styles.flex]}>{t('settings.countFullShared')}</Text>
-                <Switch
-                  value={countFullShared}
-                  onValueChange={setCountFullShared}
-                  trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              <Text style={styles.hint}>{t('settings.countFullSharedHint')}</Text>
-            </>
-          )}
-        </Section>
-      )}
+        {/* Μόνο για τον developer: ανοίγει το Pro στο Expo Go μέχρι να μπουν οι πληρωμές. */}
+        {__DEV__ && (
+          <>
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, styles.flex]}>{t('settings.devPro')}</Text>
+              <Switch
+                value={isPro}
+                onValueChange={toggleDevPro}
+                trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text style={styles.hint}>{t('settings.devProHint')}</Text>
+          </>
+        )}
+
+        {isPro && (
+          <>
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, styles.flex]}>{t('settings.countFullShared')}</Text>
+              <Switch
+                value={countFullShared}
+                onValueChange={setCountFullShared}
+                trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text style={styles.hint}>{t('settings.countFullSharedHint')}</Text>
+          </>
+        )}
+      </Section>
 
       <Section title={t('settings.security')}>
         <View style={styles.row}>
@@ -623,6 +635,7 @@ const useStyles = createStyles((colors) => ({
   },
   next: { gap: 2 },
   rowLabel: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
+  pressedRow: { opacity: 0.7 },
   rowValue: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular },
   rowValueOn: { color: colors.accentBright },
   preview: { color: colors.text, fontSize: 14, fontFamily: fonts.regular, marginTop: 4 },

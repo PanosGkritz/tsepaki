@@ -16,9 +16,9 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 // «soon»: δεν υπάρχει ακόμα στην εφαρμογή. Το σβήνουμε όταν φτιαχτεί.
 const BENEFITS: { icon: IconName; key: StringKey; soon?: true }[] = [
   { icon: 'people-outline', key: 'pro.benefitShared' },
-  { icon: 'trending-up-outline', key: 'pro.benefitPrices', soon: true },
-  { icon: 'bulb-outline', key: 'pro.benefitSave', soon: true },
-  { icon: 'sparkles-outline', key: 'pro.benefitWrapped', soon: true },
+  { icon: 'trending-up-outline', key: 'pro.benefitPrices' },
+  { icon: 'bulb-outline', key: 'pro.benefitSave' },
+  { icon: 'sparkles-outline', key: 'pro.benefitWrapped' },
   { icon: 'apps-outline', key: 'pro.benefitWidgets', soon: true },
 ];
 
@@ -29,7 +29,7 @@ const LAVENDER = '#C4B5FD';
 
 // Γεμίζει όλο τον χώρο του γονέα με τα χρώματα της ίριδας. Μετράμε πρώτα το μέγεθος,
 // γιατί με «100%» το SVG δεν γέμιζε πάντα ολόκληρο το στοιχείο.
-const IrisFill = ({ id }: { id: string }) => {
+export const IrisFill = ({ id }: { id: string }) => {
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
 
   const onLayout = (event: LayoutChangeEvent) => {

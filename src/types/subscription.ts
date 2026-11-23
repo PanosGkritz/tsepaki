@@ -28,8 +28,10 @@ export type Subscription = {
   card?: string;
   isTrial?: boolean;
   share?: ShareInfo;
+  // Το πακέτο του καταλόγου (π.χ. «Standard»), αν προστέθηκε από εκεί.
+  plan?: string;
   createdAt?: string;
   reviewAfter?: string;
 };
 
-export type NewSubscription = Omit<Subscription, 'id' | 'createdAt' | 'reviewAfter'>;
+export type NewSubscription = Omit<Subscription, 'id' | 'createdAt' | 'reviewAfter'>;

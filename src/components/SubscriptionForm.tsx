@@ -210,6 +210,12 @@ export const SubscriptionForm = ({
         card: trimmedCard || undefined,
         isTrial,
         share: isShared ? draftToShare(shareDraft) : undefined,
+        // Το πακέτο κρατιέται μόνο αν η τιμή είναι ακόμα αυτή του πακέτου (για τις αυξήσεις του Pro).
+        plan:
+          selectedPlan?.name ??
+          (initial?.plan && initial.price === price && initial.cycle === cycle
+            ? initial.plan
+            : undefined),
       });
     } catch {
       setError('form.errorSave');
@@ -580,4 +586,4 @@ const useStyles = createStyles((colors) => ({
   },
   saveButtonPressed: { opacity: 0.8 },
   saveButtonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
-}));
+}));

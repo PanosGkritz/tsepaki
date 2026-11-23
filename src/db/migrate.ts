@@ -1,11 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { mockSubscriptions } from '../data/mockSubscriptions';
+import { seedDemoData } from '../data/demoSeed';
 
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 12;
 
-// Η βάση για εγγραφές οθόνης (src/app/_layout.tsx → databaseName="tsepaki-demo.db")
-// ξεκινάει με παραδείγματα. Η κανονική βάση ξεκινάει πάντα άδεια.
-const DEMO_DATABASE = 'tsepaki-demo.db';
+// Οι βάσεις για εγγραφές οθόνης (src/app/_layout.tsx → databaseName="tsepaki-demo.db",
+// «tsepaki-demo2.db» κ.λπ. για να ξεκινήσει από την αρχή) γεμίζουν με παραδείγματα.
+// Η κανονική βάση ξεκινάει πάντα άδεια.
+const DEMO_DATABASE = /tsepaki-demo\d*\.db$/;
 
 export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -147,28 +148,30 @@ export const migrateDbIfNeeded = async (db: SQLiteDatabase) => {
     currentVersion = 11;
   }
 
-  if (isFreshDatabase && db.databasePath.endsWith(DEMO_DATABASE)) {
-    await seedDemoSubscriptions(db);
+  if (currentVersion === 11) {
+    await db.execAsync(`
+      ALTER TABLE subscriptions ADD COLUMN plan TEXT;
+
+      CREATE TABLE IF NOT EXISTS price_changes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subscription_id TEXT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+        changed_on TEXT NOT NULL,
+        old_cents INTEGER NOT NULL,
+        new_cents INTEGER NOT NULL,
+        source TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'applied'
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS price_changes_catalog
+        ON price_changes (subscription_id, new_cents) WHERE source = 'catalog';
+    `);
+
+    currentVersion = 12;
+  }
+
+  if (isFreshDatabase && DEMO_DATABASE.test(db.databasePath)) {
+    await seedDemoData(db);
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
-};
-
-const seedDemoSubscriptions = async (db: SQLiteDatabase) => {
-  for (const subscription of mockSubscriptions) {
-    await db.runAsync(
-      `INSERT INTO subscriptions
-         (id, name, price_cents, cycle, next_charge_date, color, category, service_id, payment_mode)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      subscription.id,
-      subscription.name,
-      Math.round(subscription.price * 100),
-      subscription.cycle,
-      subscription.nextChargeDate,
-      subscription.color,
-      subscription.category,
-      subscription.serviceId ?? subscription.id,
-      subscription.paymentMode,
-    );
-  }
 };

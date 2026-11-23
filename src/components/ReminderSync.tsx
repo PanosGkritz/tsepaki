@@ -28,13 +28,20 @@ export const ReminderSync = () => {
   const lastResponse = Notifications.useLastNotificationResponse();
 
   useEffect(() => {
+    // Αν οι νέες τιμές του καταλόγου έφεραν αυξήσεις, ξαναχτίζονται οι ειδοποιήσεις
+    // (για το «Το κρατάς;») και ενημερώνεται η αρχική.
+    const refreshCatalog = () =>
+      refreshCatalogPrices(db).then((foundIncreases) => {
+        if (foundIncreases) syncReminders(db).then(notifyDataChanged);
+      });
+
     syncReminders(db);
-    refreshCatalogPrices(db);
+    refreshCatalog();
 
     const listener = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       syncReminders(db).then(notifyDataChanged);
-      refreshCatalogPrices(db);
+      refreshCatalog();
     });
 
     return () => listener.remove();

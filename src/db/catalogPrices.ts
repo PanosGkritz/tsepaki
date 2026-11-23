@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { applyCatalogPrices } from '../data/services';
+import { applyCatalogPrices, getServicePlans, services } from '../data/services';
 import { CATALOG_PRICES_URL, parseCatalogPrices } from '../lib/catalogPrices';
+import { detectCatalogIncreases } from './priceChanges';
 
 // Αποθηκεύονται στον πίνακα settings, αλλά δεν μπαίνουν στο αντίγραφο ασφαλείας.
 export const CATALOG_CACHE_KEY = 'catalogPrices';
@@ -38,12 +39,16 @@ export const loadCachedCatalogPrices = async (db: SQLiteDatabase) => {
   }
 };
 
+const currentPlans = () =>
+  Object.fromEntries(services.map((service) => [service.id, getServicePlans(service)]));
+
 // Μία φορά τη μέρα κατεβάζει τις τιμές του καταλόγου. Ό,τι κι αν πάει στραβά,
-// η εφαρμογή συνεχίζει με τις τιμές που έχει.
+// η εφαρμογή συνεχίζει με τις τιμές που έχει. Επιστρέφει true αν βρέθηκαν νέες αυξήσεις
+// σε συνδρομές του χρήστη.
 export const refreshCatalogPrices = async (db: SQLiteDatabase, now = new Date()) => {
   try {
     const checkedAt = Number(await readValue(db, CATALOG_CHECKED_KEY));
-    if (Number.isFinite(checkedAt) && now.getTime() - checkedAt < CHECK_INTERVAL_MS) return;
+    if (Number.isFinite(checkedAt) && now.getTime() - checkedAt < CHECK_INTERVAL_MS) return false;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -54,15 +59,19 @@ export const refreshCatalogPrices = async (db: SQLiteDatabase, now = new Date())
     clearTimeout(timeout);
 
     await writeValue(db, CATALOG_CHECKED_KEY, String(now.getTime()));
-    if (!response.ok) return;
+    if (!response.ok) return false;
 
     const text = await response.text();
     const prices = parseText(text);
-    if (!prices) return;
+    if (!prices) return false;
 
+    const previous = currentPlans();
     applyCatalogPrices(prices);
     await writeValue(db, CATALOG_CACHE_KEY, text);
+
+    return (await detectCatalogIncreases(db, previous, currentPlans(), now)) > 0;
   } catch {
     // Χωρίς internet ή με χαλασμένο αρχείο κρατάμε τις τιμές που ήδη έχουμε.
+    return false;
   }
 };

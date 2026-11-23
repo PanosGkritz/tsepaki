@@ -7,6 +7,7 @@ import type {
 } from '../types/subscription';
 import { addMonths, toIsoDate } from '../lib/dates';
 import { REVIEW_AFTER_MONTHS } from '../lib/review';
+import { recordManualPriceChange } from './priceChanges';
 import { parseShare, serializeShare } from '../lib/share';
 
 type SubscriptionRow = {
@@ -25,6 +26,7 @@ type SubscriptionRow = {
   created_at: string | null;
   review_after: string | null;
   share: string | null;
+  plan: string | null;
   cancelled_at?: string | null;
 };
 
@@ -47,6 +49,7 @@ const toSubscription = (row: SubscriptionRow): Subscription => ({
   card: row.card ?? undefined,
   isTrial: row.is_trial === 1,
   share: parseShare(row.share),
+  plan: row.plan ?? undefined,
   createdAt: row.created_at ? row.created_at.slice(0, 10) : undefined,
   reviewAfter: row.review_after ?? undefined,
 });
@@ -71,8 +74,8 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
   await db.runAsync(
     `INSERT INTO subscriptions
        (id, name, price_cents, cycle, next_charge_date, color, category, service_id, domain,
-        payment_mode, card, is_trial, share)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        payment_mode, card, is_trial, share, plan)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -86,6 +89,7 @@ export const insertSubscription = async (db: SQLiteDatabase, subscription: NewSu
     subscription.card ?? null,
     subscription.isTrial ? 1 : 0,
     serializeShare(subscription.share),
+    subscription.plan ?? null,
   );
 
   return id;
@@ -96,11 +100,13 @@ export const updateSubscription = async (
   id: string,
   subscription: NewSubscription,
 ) => {
+  const previous = await getSubscription(db, id);
+
   await db.runAsync(
     `UPDATE subscriptions
      SET name = ?, price_cents = ?, cycle = ?, next_charge_date = ?, color = ?,
          category = ?, service_id = ?, domain = ?, payment_mode = ?, card = ?, is_trial = ?,
-         share = ?
+         share = ?, plan = ?
      WHERE id = ?`,
     subscription.name,
     Math.round(subscription.price * 100),
@@ -114,8 +120,14 @@ export const updateSubscription = async (
     subscription.card ?? null,
     subscription.isTrial ? 1 : 0,
     serializeShare(subscription.share),
+    subscription.plan ?? null,
     id,
   );
+
+  // Ιστορικό τιμών (Pro): κρατάμε κάθε αλλαγή τιμής στην ίδια συχνότητα.
+  if (previous && previous.cycle === subscription.cycle) {
+    await recordManualPriceChange(db, id, previous.price, subscription.price);
+  }
 };
 
 // Οι κάρτες που έχει ήδη γράψει ο χρήστης, για γρήγορη επιλογή στη φόρμα.
@@ -161,7 +173,8 @@ export const getCancelledSince = async (db: SQLiteDatabase, fromIso: string) => 
 };
 
 export const deleteSubscription = async (db: SQLiteDatabase, id: string) => {
+  await db.runAsync('DELETE FROM price_changes WHERE subscription_id = ?', id);
   await db.runAsync('DELETE FROM share_payments WHERE subscription_id = ?', id);
   await db.runAsync('DELETE FROM charges WHERE subscription_id = ?', id);
   await db.runAsync('DELETE FROM subscriptions WHERE id = ?', id);
-};
+};

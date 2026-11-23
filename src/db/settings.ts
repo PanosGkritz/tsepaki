@@ -18,6 +18,8 @@ export type AppSettings = {
   countFullShared: boolean;
   // Μόνο για δοκιμές του developer μέχρι να μπουν οι πληρωμές του Google Play.
   devPro: boolean;
+  // Οι προτάσεις του «Γλίτωσέ τα» που ο χρήστης είπε «Δεν με ενδιαφέρει».
+  dismissedTips: string[];
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   currency: null,
   countFullShared: false,
   devPro: false,
+  dismissedTips: [],
 };
 
 const parseJson = (text: string): unknown => {
@@ -46,6 +49,9 @@ const parseJson = (text: string): unknown => {
 
 const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'number');
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
 
 const isThemeMode = (value: unknown): value is ThemeMode =>
   value === 'system' || value === 'dark' || value === 'light';
@@ -83,6 +89,8 @@ const applyStoredValue = (settings: AppSettings, key: string, value: unknown): A
       return typeof value === 'boolean' ? { ...settings, countFullShared: value } : settings;
     case 'devPro':
       return typeof value === 'boolean' ? { ...settings, devPro: value } : settings;
+    case 'dismissedTips':
+      return isStringArray(value) ? { ...settings, dismissedTips: value } : settings;
     default:
       return settings;
   }

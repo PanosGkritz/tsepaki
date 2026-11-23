@@ -5,6 +5,7 @@ import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { CategoryBreakdown } from '../../components/CategoryBreakdown';
 import { MonthlyBars } from '../../components/MonthlyBars';
+import { WrappedEntry } from '../../components/WrappedEntry';
 import { SubscriptionRow } from '../../components/SubscriptionRow';
 import { fonts, radius, spacing } from '../../constants/theme';
 import { getChargedItems } from '../../db/charges';
@@ -150,6 +151,8 @@ export default function History() {
           </View>
         </View>
       )}
+
+      <WrappedEntry />
 
       <Text style={styles.sectionTitle}>{t('history.byMonth')}</Text>
       <View style={styles.card}>
@@ -313,4 +316,4 @@ const useStyles = createStyles((colors) => ({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
   },
-}));
+}));

@@ -121,6 +121,154 @@ export const proStrings = {
     en: 'You’ll be able to buy Pro through Google Play soon.',
   },
 
+  'common.close': { el: 'Κλείσιμο', en: 'Close' },
+  'pro.screenTitle': { el: 'Πάρε περισσότερα από το Τσεπάκι', en: 'Get more from Tsepaki' },
+  'pro.screenSubtitle': {
+    el: 'Με το Pro βλέπεις πού μπορείς να γλιτώσεις, μαθαίνεις όταν ανεβαίνει μια τιμή και μοιράζεσαι συνδρομές με φίλους.',
+    en: 'With Pro you see where you can save, find out when a price goes up and share subscriptions with friends.',
+  },
+  'pro.freeNote': {
+    el: 'Οι υπενθυμίσεις, οι απεριόριστες συνδρομές, το ιστορικό και το αντίγραφο ασφαλείας μένουν πάντα δωρεάν.',
+    en: 'Reminders, unlimited subscriptions, history and backups always stay free.',
+  },
+  'pro.settingsRow': { el: 'Τσεπάκι Pro', en: 'Tsepaki Pro' },
+  'pro.settingsActive': { el: 'Ενεργό', en: 'Active' },
+
+  'priceUp.title': { el: 'Το {name} ακρίβυνε', en: '{name} went up' },
+  'priceUp.question': {
+    el: 'Το κρατάς με τη νέα τιμή; Οι υπενθυμίσεις και τα σύνολα θα δείχνουν το νέο ποσό.',
+    en: 'Keeping it at the new price? Reminders and totals will show the new amount.',
+  },
+  'priceUp.questionYearly': {
+    el: 'Η ετήσια τιμή ανέβηκε. Το κρατάς με τη νέα τιμή; Οι υπενθυμίσεις και τα σύνολα θα δείχνουν το νέο ποσό.',
+    en: 'The yearly price went up. Keeping it at the new price? Reminders and totals will show the new amount.',
+  },
+  'priceUp.keep': { el: 'Ναι, το κρατάω', en: 'Yes, keep it' },
+  'priceUp.notChanged': {
+    el: 'Εμένα δεν μου άλλαξε η τιμή',
+    en: 'My price hasn’t changed',
+  },
+  'priceHistory.title': { el: 'Ιστορικό τιμής', en: 'Price history' },
+  'priceHistory.unchanged': {
+    el: 'Η τιμή δεν έχει αλλάξει.',
+    en: 'The price hasn’t changed.',
+  },
+  'priceHistory.unchangedSince': {
+    el: 'Η τιμή δεν έχει αλλάξει από τις {date}, που την πρόσθεσες.',
+    en: 'The price hasn’t changed since you added it on {date}.',
+  },
+  'priceHistory.teaser': {
+    el: 'Δες πώς άλλαξε η τιμή με το Pro',
+    en: 'See how the price changed with Pro',
+  },
+
+  'tips.title': { el: 'Γλίτωσέ τα', en: 'Save it' },
+  'tips.upTo': { el: 'έως {amount}/χρόνο', en: 'up to {amount}/yr' },
+  'tips.teaser': {
+    el: 'Με το Pro μπορείς να γλιτώσεις έως {monthly} τον μήνα ({yearly} τον χρόνο). Το νούμερο βγαίνει από τις δικές σου συνδρομές.',
+    en: 'With Pro you could save up to {monthly} a month ({yearly} a year). This is worked out from your own subscriptions.',
+  },
+  'tips.teaserAction': { el: 'Δες πώς', en: 'See how' },
+  'tips.open': { el: 'Δες τη συνδρομή', en: 'View subscription' },
+  'tips.dismiss': { el: 'Δεν με ενδιαφέρει', en: 'Not interested' },
+  'tips.trialTitle': { el: 'Λήγει η δοκιμή του {name}', en: 'Your {name} trial is ending' },
+  'tips.trialBody': {
+    el: 'Σε {days} μέρες αρχίζει να χρεώνει {amount} τον μήνα. Αν δεν το χρειάζεσαι, ακύρωσέ το πριν από τότε.',
+    en: 'In {days} days it starts charging {amount} a month. If you don’t need it, cancel before then.',
+  },
+  'tips.trialBodyYearly': {
+    el: 'Σε {days} μέρες αρχίζει να χρεώνει {amount} τον χρόνο. Αν δεν το χρειάζεσαι, ακύρωσέ το πριν από τότε.',
+    en: 'In {days} days it starts charging {amount} a year. If you don’t need it, cancel before then.',
+  },
+  'tips.bundleYoutubeTitle': {
+    el: 'Το YouTube Premium έχει ήδη μουσική',
+    en: 'YouTube Premium already includes music',
+  },
+  'tips.bundleYoutubeBody': {
+    el: 'Μαζί του παίρνεις και το YouTube Music. Αν σου αρκεί, το {names} περισσεύει και γλιτώνεις {amount} τον χρόνο.',
+    en: 'It comes with YouTube Music. If that’s enough for you, you can drop {names} and save {amount} a year.',
+  },
+  'tips.bundleAppleTitle': {
+    el: 'Το Apple One τα έχει ήδη μέσα',
+    en: 'Apple One already includes these',
+  },
+  'tips.bundleAppleBody': {
+    el: 'Πληρώνεις ξεχωριστά και {names}, που περιλαμβάνονται στο Apple One. Αν το πακέτο σου τα καλύπτει, γλιτώνεις {amount} τον χρόνο.',
+    en: 'You also pay separately for {names}, which come with Apple One. If your plan covers them, you save {amount} a year.',
+  },
+  'tips.overlapMusic': { el: 'Πληρώνεις {count} υπηρεσίες μουσικής', en: 'You pay for {count} music services' },
+  'tips.overlapStreaming': { el: 'Έχεις {count} υπηρεσίες streaming', en: 'You have {count} streaming services' },
+  'tips.overlapAi': { el: 'Πληρώνεις {count} εργαλεία AI', en: 'You pay for {count} AI tools' },
+  'tips.overlapStorage': { el: 'Πληρώνεις {count} υπηρεσίες αποθήκευσης', en: 'You pay for {count} storage services' },
+  'tips.overlapDelivery': { el: 'Έχεις {count} συνδρομές delivery', en: 'You have {count} delivery memberships' },
+  'tips.overlapGaming': { el: 'Έχεις {count} συνδρομές gaming', en: 'You have {count} gaming subscriptions' },
+  'tips.overlapBody': {
+    el: '{names}. Συνήθως φτάνει μία. Αν κρατήσεις μόνο την ακριβότερη, γλιτώνεις {amount} τον χρόνο.',
+    en: '{names}. One is usually enough. Keeping only the most expensive saves you {amount} a year.',
+  },
+  'tips.overlapRotateBody': {
+    el: '{names}. Δοκίμασε να κρατάς μία κάθε μήνα και να αλλάζεις: γλιτώνεις έως {amount} τον χρόνο.',
+    en: '{names}. Try keeping one at a time and switching each month: you save up to {amount} a year.',
+  },
+  'tips.yearlyTitle': { el: 'Το {name} βγαίνει φθηνότερο ετήσια', en: '{name} is cheaper yearly' },
+  'tips.yearlyBody': {
+    el: 'Με το ετήσιο πακέτο πληρώνεις {yearly} τον χρόνο αντί για {current}. Γλιτώνεις {amount}.',
+    en: 'With the yearly plan you pay {yearly} a year instead of {current}. You save {amount}.',
+  },
+  'tips.planTitle': { el: 'Φθηνότερο πακέτο στο {name}', en: 'A cheaper {name} plan' },
+  'tips.planBody': {
+    el: 'Το {plan} κοστίζει {price} τον μήνα αντί για {current}. Αν σου φτάνει, γλιτώνεις {amount} τον χρόνο.',
+    en: '{plan} costs {price} a month instead of {current}. If it’s enough for you, you save {amount} a year.',
+  },
+  'tips.planBodyYearly': {
+    el: 'Το {plan} κοστίζει {price} τον χρόνο αντί για {current}. Αν σου φτάνει, γλιτώνεις {amount}.',
+    en: '{plan} costs {price} a year instead of {current}. If it’s enough for you, you save {amount}.',
+  },
+
+  'wrapped.entryTitle': { el: 'Η χρονιά σου σε συνδρομές', en: 'Your year in subscriptions' },
+  'wrapped.entryText': {
+    el: 'Πόσα έδωσες, η αγαπημένη σου, ο πιο ακριβός μήνας. Έτοιμο για κοινοποίηση.',
+    en: 'What you spent, your favourite, your priciest month. Ready to share.',
+  },
+  'wrapped.introLabel': { el: 'Η χρονιά σου σε συνδρομές', en: 'Your year in subscriptions' },
+  'wrapped.introTitle': { el: 'Το {year} σου', en: 'Your {year}' },
+  'wrapped.tapHint': { el: 'Πάτα δεξιά για συνέχεια', en: 'Tap the right side to continue' },
+  'wrapped.totalLabel': { el: 'Φέτος έδωσες σε συνδρομές', en: 'This year you spent' },
+  'wrapped.totalText': {
+    el: 'σε {count} χρεώσεις, δηλαδή περίπου {perDay} τη μέρα.',
+    en: 'across {count} charges, about {perDay} a day.',
+  },
+  'wrapped.topLabel': { el: 'Εκεί έδωσες τα περισσότερα', en: 'Where most of it went' },
+  'wrapped.topText': {
+    el: '{amount} σε {count} χρεώσεις.',
+    en: '{amount} across {count} charges.',
+  },
+  'wrapped.categoryLabel': { el: 'Η κατηγορία της χρονιάς', en: 'Category of the year' },
+  'wrapped.monthLabel': { el: 'Ο πιο ακριβός μήνας', en: 'Your priciest month' },
+  'wrapped.monthText': { el: 'Έφυγαν {amount}.', en: '{amount} went out.' },
+  'wrapped.movesLabel': { el: 'Οι συνδρομές σου φέτος', en: 'Your subscriptions this year' },
+  'wrapped.active': { el: 'ενεργές', en: 'active' },
+  'wrapped.added': { el: 'νέες', en: 'new' },
+  'wrapped.cancelled': { el: 'ακυρώσεις', en: 'cancelled' },
+  'wrapped.savedText': {
+    el: 'Με όσες ακύρωσες, γλίτωσες {amount}.',
+    en: 'By cancelling, you saved {amount}.',
+  },
+  'wrapped.shareTitle': { el: 'Το {year} μου σε συνδρομές', en: 'My {year} in subscriptions' },
+  'wrapped.shareTotal': { el: 'Σύνολο', en: 'Total' },
+  'wrapped.shareTop': { el: 'Η αγαπημένη μου', en: 'My favourite' },
+  'wrapped.shareCategory': { el: 'Κατηγορία της χρονιάς', en: 'Category of the year' },
+  'wrapped.shareActive': { el: 'Ενεργές συνδρομές', en: 'Active subscriptions' },
+  'wrapped.shareSaved': { el: 'Γλίτωσα', en: 'Saved' },
+  'wrapped.share': { el: 'Μοιράσου το', en: 'Share it' },
+  'wrapped.next': { el: 'Επόμενη', en: 'Next' },
+  'wrapped.previous': { el: 'Προηγούμενη', en: 'Previous' },
+  'wrapped.emptyTitle': { el: 'Δεν υπάρχουν ακόμα χρεώσεις φέτος', en: 'No charges yet this year' },
+  'wrapped.emptyText': {
+    el: 'Μόλις περάσουν οι πρώτες χρεώσεις, εδώ θα δεις τη χρονιά σου.',
+    en: 'Once your first charges go through, you’ll see your year here.',
+  },
+
   'settings.pro': { el: 'Pro', en: 'Pro' },
   'settings.devPro': { el: 'Pro (δοκιμή developer)', en: 'Pro (developer test)' },
   'settings.devProHint': {

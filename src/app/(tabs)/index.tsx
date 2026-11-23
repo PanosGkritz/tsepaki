@@ -5,12 +5,20 @@ import { Alert, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { MonthSummaryCard } from '../../components/MonthSummaryCard';
 import { POOF_DURATION } from '../../components/PoofOut';
+import { PriceIncreaseCard } from '../../components/PriceIncreaseCard';
 import { ProBadge } from '../../components/ProCard';
+import { SavingsTips } from '../../components/SavingsTips';
 import { StillUsingCard } from '../../components/StillUsingCard';
 import { UpcomingCharges } from '../../components/UpcomingCharges';
 import { fonts, spacing } from '../../constants/theme';
 import { getChargesSince, getPaidBetween, markChargesPaid } from '../../db/charges';
-import { getSettings } from '../../db/settings';
+import {
+  acceptIncrease,
+  dismissIncrease,
+  getPendingIncreases,
+  type PriceChange,
+} from '../../db/priceChanges';
+import { getSettings, saveSetting } from '../../db/settings';
 import { cancelSubscription, getSubscriptions, postponeReview } from '../../db/subscriptions';
 import { notifyDataChanged, onDataChanged } from '../../lib/events';
 import { hapticRemove, hapticSuccess } from '../../lib/haptics';
@@ -32,22 +40,29 @@ export default function Home() {
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [review, setReview] = useState<{ subscription: Subscription; cost: number } | null>(null);
   const [reviewRemoving, setReviewRemoving] = useState(false);
+  const [increase, setIncrease] = useState<PriceChange | null>(null);
+  const [increaseRemoving, setIncreaseRemoving] = useState(false);
+  const [dismissedTips, setDismissedTips] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const settings = await getSettings(db);
     setUserName(settings.userName);
     setOnboardingDone(settings.onboardingDone);
+    setDismissedTips(settings.dismissedTips);
     if (!settings.onboardingDone) return;
 
     await syncReminders(db);
     const { from, to } = getMonthRange();
-    const [loadedSubscriptions, paidThisMonth] = await Promise.all([
+    const [loadedSubscriptions, paidThisMonth, increases] = await Promise.all([
       getSubscriptions(db),
       getPaidBetween(db, from, to),
+      getPendingIncreases(db),
     ]);
 
     setSubscriptions(loadedSubscriptions);
     setPaid(paidThisMonth);
+    setIncrease(increases[0] ?? null);
+    setIncreaseRemoving(false);
 
     const candidate = pickReviewCandidate(loadedSubscriptions);
     const cost = candidate ? await getChargesSince(db, candidate.id, getReviewWindowStart()) : 0;
@@ -93,6 +108,46 @@ export default function Home() {
       },
     ]);
 
+  // «Ναι, το κρατάω»: η συνδρομή παίρνει τη νέα τιμή.
+  const keepIncrease = async (change: PriceChange) => {
+    setIncrease(null);
+    await acceptIncrease(db, change);
+    hapticSuccess();
+    await syncReminders(db);
+    notifyDataChanged();
+  };
+
+  const notChanged = async (change: PriceChange) => {
+    setIncrease(null);
+    await dismissIncrease(db, change.id);
+    await syncReminders(db);
+    await load();
+  };
+
+  const cancelIncreased = (subscription: Subscription, change: PriceChange) =>
+    Alert.alert(t('review.cancelTitle'), t('review.cancelMessage', { name: subscription.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('review.cancelConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          setIncreaseRemoving(true);
+          hapticRemove();
+          await new Promise((resolve) => setTimeout(resolve, POOF_DURATION));
+          await dismissIncrease(db, change.id);
+          await cancelSubscription(db, subscription.id);
+          await syncReminders(db);
+          notifyDataChanged();
+        },
+      },
+    ]);
+
+  const dismissTip = async (id: string) => {
+    const next = [...dismissedTips, id];
+    setDismissedTips(next);
+    await saveSetting(db, 'dismissedTips', next);
+  };
+
   const openPaidHistory = () =>
     router.navigate({ pathname: '/history', params: { focus: 'charges' } });
 
@@ -100,6 +155,9 @@ export default function Home() {
   if (!onboardingDone) return <Redirect href="/welcome" />;
 
   const summary = getMonthSummary(subscriptions, paid, new Date(), countFullShared);
+  const increasedSubscription = increase
+    ? subscriptions.find((subscription) => subscription.id === increase.subscriptionId)
+    : undefined;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -125,6 +183,18 @@ export default function Home() {
 
       <UpcomingCharges subscriptions={subscriptions} onMarkPaid={handleMarkPaid} />
 
+      {isPro && increasedSubscription && increase && (
+        <PriceIncreaseCard
+          key={`price-${increase.id}`}
+          subscription={increasedSubscription}
+          change={increase}
+          removing={increaseRemoving}
+          onKeep={() => keepIncrease(increase)}
+          onCancel={() => cancelIncreased(increasedSubscription, increase)}
+          onNotChanged={() => notChanged(increase)}
+        />
+      )}
+
       {review && (
         <StillUsingCard
           key={review.subscription.id}
@@ -135,6 +205,12 @@ export default function Home() {
           onCancel={() => cancelReviewed(review.subscription)}
         />
       )}
+
+      <SavingsTips
+        subscriptions={subscriptions}
+        dismissed={dismissedTips}
+        onDismiss={dismissTip}
+      />
     </ScrollView>
   );
 }

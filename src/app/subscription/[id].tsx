@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { PriceHistory } from '../../components/PriceHistory';
 import { SharePayments } from '../../components/SharePayments';
 import { SubscriptionForm } from '../../components/SubscriptionForm';
 import { fonts, radius, spacing } from '../../constants/theme';
@@ -133,6 +134,8 @@ export default function EditSubscription() {
             <SharePayments subscription={subscription} />
           )}
 
+          <PriceHistory subscription={subscription} />
+
           {totals && (
             <View style={styles.totalsCard}>
               <Text style={styles.totalsLabel}>{t('edit.totalsLabel')}</Text>
@@ -205,4 +208,4 @@ const useStyles = createStyles((colors) => ({
   pressed: { opacity: 0.7 },
   actionText: { color: colors.text, fontSize: 15, fontFamily: fonts.medium },
   deleteText: { color: colors.warning, fontSize: 15, fontFamily: fonts.medium },
-}));
+}));
