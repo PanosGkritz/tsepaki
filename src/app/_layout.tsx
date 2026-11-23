@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppLock } from '../components/AppLock';
+import { IntroSplash } from '../components/IntroSplash';
 import { ReminderSync } from '../components/ReminderSync';
 import { migrateDbIfNeeded } from '../db/migrate';
 import { setupNotifications } from '../lib/notifications';
@@ -40,6 +41,7 @@ export default function RootLayout() {
           <AppLock>
             <AppStack />
           </AppLock>
+          <IntroSplash />
         </PreferencesProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
@@ -66,4 +68,4 @@ const AppStack = () => {
       </Stack>
     </>
   );
-};
+};

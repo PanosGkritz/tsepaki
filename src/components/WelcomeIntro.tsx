@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { fonts, radius, spacing } from '../constants/theme';
 import type { StringKey } from '../i18n';
 import { createStyles } from '../lib/styles';
 import { usePreferences } from '../providers/PreferencesProvider';
 import { AppLogo } from './AppLogo';
+import { ProCard } from './ProCard';
 
 // Το πράσινο του logo, ίδιο σε ανοιχτό και σκούρο θέμα.
 const BRAND_GREEN = '#1F6F54';
@@ -32,13 +33,14 @@ type WelcomeIntroProps = {
 export const WelcomeIntro = ({ onContinue }: WelcomeIntroProps) => {
   const styles = useStyles();
   const { t } = usePreferences();
-  const buttonDelay = FEATURE_DELAY + FEATURES.length * FEATURE_STEP + 150;
+  const proDelay = FEATURE_DELAY + FEATURES.length * FEATURE_STEP + 100;
+  const buttonDelay = proDelay + 200;
 
   return (
     <Animated.View entering={FadeIn.duration(300)} style={styles.screen}>
       <StatusBar style="light" />
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={ZoomIn.springify().damping(13)}>
           <AppLogo size={64} background="rgba(255,255,255,0.14)" />
         </Animated.View>
@@ -62,7 +64,11 @@ export const WelcomeIntro = ({ onContinue }: WelcomeIntroProps) => {
             </Animated.View>
           ))}
         </View>
-      </View>
+
+        <Animated.View entering={FadeInDown.delay(proDelay).duration(420)}>
+          <ProCard />
+        </Animated.View>
+      </ScrollView>
 
       <Animated.View entering={FadeInUp.delay(buttonDelay).duration(360)} style={styles.footer}>
         <Pressable
@@ -81,9 +87,9 @@ export const WelcomeIntro = ({ onContinue }: WelcomeIntroProps) => {
 const useStyles = createStyles(() => ({
   screen: { flex: 1, backgroundColor: BRAND_GREEN },
   content: {
-    flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: 96,
+    paddingTop: 80,
+    paddingBottom: spacing.lg,
     gap: spacing.xl,
   },
   heading: { gap: spacing.sm },
@@ -111,7 +117,7 @@ const useStyles = createStyles(() => ({
     fontFamily: fonts.regular,
     lineHeight: 22,
   },
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: 48 },
+  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 40 },
   button: {
     height: 56,
     borderRadius: radius.full,

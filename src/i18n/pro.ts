@@ -87,6 +87,40 @@ export const proStrings = {
   'share.allPaid': { el: 'Όλοι πλήρωσαν!', en: 'Everyone paid!' },
   'share.ask': { el: 'Στείλε μήνυμα για τα μερίδια', en: 'Send a message for the shares' },
 
+  'pro.title': { el: 'Τσεπάκι Pro', en: 'Tsepaki Pro' },
+  'pro.benefitShared': {
+    el: 'Κοινές συνδρομές: χωρίζεις το ποσό και βλέπεις ποιος σού χρωστάει',
+    en: 'Shared subscriptions: split the cost and see who owes you',
+  },
+  'pro.benefitPrices': {
+    el: 'Ιστορικό τιμών και ειδοποίηση όταν ανεβαίνει μια τιμή',
+    en: 'Price history and an alert when a price goes up',
+  },
+  'pro.benefitSave': {
+    el: '«Γλίτωσέ τα»: προτάσεις για να πληρώνεις λιγότερα',
+    en: '“Save it”: tips to pay less',
+  },
+  'pro.benefitWrapped': {
+    el: 'Η χρονιά σου σε συνδρομές, έτοιμη για κοινοποίηση',
+    en: 'Your year in subscriptions, ready to share',
+  },
+  'pro.benefitWidgets': {
+    el: 'Widgets για την αρχική οθόνη του κινητού',
+    en: 'Home screen widgets',
+  },
+  'pro.soon': { el: 'σύντομα', en: 'soon' },
+  'pro.oneTime': {
+    el: 'μία φορά, για πάντα · χωρίς συνδρομή',
+    en: 'one time, forever · no subscription',
+  },
+  'pro.buy': { el: 'Απόκτησε το Pro', en: 'Get Pro' },
+  'pro.active': { el: 'Το Pro είναι ενεργό', en: 'Pro is active' },
+  'pro.soonTitle': { el: 'Έρχεται σύντομα', en: 'Coming soon' },
+  'pro.soonMessage': {
+    el: 'Η αγορά του Pro θα ανοίξει σύντομα μέσα από το Google Play.',
+    en: 'You’ll be able to buy Pro through Google Play soon.',
+  },
+
   'settings.pro': { el: 'Pro', en: 'Pro' },
   'settings.devPro': { el: 'Pro (δοκιμή developer)', en: 'Pro (developer test)' },
   'settings.devProHint': {

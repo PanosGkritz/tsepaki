@@ -8,6 +8,7 @@ export type AppSettings = {
   onboardingDone: boolean;
   reminderDays: number[];
   reminderHour: number;
+  reminderMinute: number;
   yearlyReminder: boolean;
   themeMode: ThemeMode;
   language: Language | null;
@@ -24,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   onboardingDone: false,
   reminderDays: [3, 2, 1, 0],
   reminderHour: 10,
+  reminderMinute: 0,
   yearlyReminder: true,
   themeMode: 'system',
   language: null,
@@ -50,6 +52,9 @@ const isThemeMode = (value: unknown): value is ThemeMode =>
 
 const isLanguage = (value: unknown): value is Language => value === 'el' || value === 'en';
 
+const isClockValue = (value: unknown, max: number): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max;
+
 const applyStoredValue = (settings: AppSettings, key: string, value: unknown): AppSettings => {
   switch (key) {
     case 'userName':
@@ -59,7 +64,9 @@ const applyStoredValue = (settings: AppSettings, key: string, value: unknown): A
     case 'reminderDays':
       return isNumberArray(value) ? { ...settings, reminderDays: value } : settings;
     case 'reminderHour':
-      return typeof value === 'number' ? { ...settings, reminderHour: value } : settings;
+      return isClockValue(value, 23) ? { ...settings, reminderHour: value } : settings;
+    case 'reminderMinute':
+      return isClockValue(value, 59) ? { ...settings, reminderMinute: value } : settings;
     case 'yearlyReminder':
       return typeof value === 'boolean' ? { ...settings, yearlyReminder: value } : settings;
     case 'themeMode':
@@ -101,4 +108,4 @@ export const saveSetting = async <K extends keyof AppSettings>(
     key,
     JSON.stringify(value),
   );
-};
+};

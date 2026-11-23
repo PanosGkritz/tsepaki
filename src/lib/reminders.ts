@@ -12,7 +12,7 @@ import { getPermissionState, replaceScheduledReminders, type Reminder } from './
 
 type ReminderSettings = Pick<
   AppSettings,
-  'reminderDays' | 'reminderHour' | 'yearlyReminder' | 'language'
+  'reminderDays' | 'reminderHour' | 'reminderMinute' | 'yearlyReminder' | 'language'
 >;
 
 // Η εβδομαδιαία σύνοψη έρχεται κάθε Κυριακή στις 8 το βράδυ, για τη Δευτέρα έως Κυριακή που έρχεται.
@@ -161,9 +161,18 @@ const MAX_REMINDERS = 60;
 
 export const REMINDER_DAY_OPTIONS = [{ value: 3 }, { value: 2 }, { value: 1 }, { value: 0 }];
 
-export const REMINDER_HOUR_OPTIONS = [8, 9, 10, 12, 18, 20];
+const pad = (value: number) => String(value).padStart(2, '0');
 
-export const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
+export const formatTime = (hour: number, minute = 0) => `${pad(hour)}:${pad(minute)}`;
+
+// Η ώρα των υπενθυμίσεων σε ώρες με δεκαδικά (10:30 → 10.5), για να περνάει εύκολα παντού.
+const toClock = (settings: Pick<ReminderSettings, 'reminderHour' | 'reminderMinute'>) =>
+  settings.reminderHour + settings.reminderMinute / 60;
+
+const setClock = (date: Date, clock: number) => {
+  const hour = Math.floor(clock);
+  date.setHours(hour, Math.round((clock - hour) * 60), 0, 0);
+};
 
 const fill = (template: string, amount: string, day = '') =>
   template.replace('{amount}', amount).replace('{day}', day);
@@ -191,7 +200,7 @@ const joinNames = (subscriptions: Subscription[], templates: Templates) => {
 const buildReminderDate = (chargeDate: string, daysBefore: number, hour: number) => {
   const date = parseIsoDate(chargeDate);
   date.setDate(date.getDate() - daysBefore);
-  date.setHours(hour, 0, 0, 0);
+  setClock(date, hour);
   return date;
 };
 
@@ -317,7 +326,7 @@ const buildTrialReminders = (
 
       return {
         id: `${subscription.id}-trial-${daysBefore}`,
-        date: buildReminderDate(subscription.nextChargeDate, daysBefore, settings.reminderHour),
+        date: buildReminderDate(subscription.nextChargeDate, daysBefore, toClock(settings)),
         title: subscription.name,
         body: capitalize(fill(template, amount, day)),
       };
@@ -420,7 +429,7 @@ const buildShareReminders = (
       return [
         {
           id: `${subscription.id}-share-give`,
-          date: buildReminderDate(subscription.nextChargeDate, 1, settings.reminderHour),
+          date: buildReminderDate(subscription.nextChargeDate, 1, toClock(settings)),
           title: subscription.name,
           body: fillList(templates.shareGive, {
             amount: formatEuro(getMyCost(subscription), language),
@@ -455,7 +464,7 @@ const buildShareReminders = (
 
 const nextReminderTime = (hour: number, now: Date) => {
   const date = new Date(now);
-  date.setHours(hour, 0, 0, 0);
+  setClock(date, hour);
   if (date <= now) date.setDate(date.getDate() + 1);
   return date;
 };
@@ -501,15 +510,15 @@ export const buildReminders = (
 
   const grouped = [...groupByChargeDate(regular).entries()].flatMap(([chargeDate, group]) =>
     settings.reminderDays.map((daysBefore) =>
-      buildGroupReminder(chargeDate, group, daysBefore, settings.reminderHour, language),
+      buildGroupReminder(chargeDate, group, daysBefore, toClock(settings), language),
     ),
   );
 
   const yearly = settings.yearlyReminder
-    ? buildYearlyReminders(regular, settings.reminderHour, language)
+    ? buildYearlyReminders(regular, toClock(settings), language)
     : [];
 
-  const overdue = buildOverdueReminders(regular, settings.reminderHour, language, now);
+  const overdue = buildOverdueReminders(regular, toClock(settings), language, now);
   const trialReminders = buildTrialReminders(trials, settings, language);
   const shared = buildShareReminders(
     subscriptions.filter((subscription) => !subscription.isTrial),
@@ -549,4 +558,4 @@ let queue = Promise.resolve();
 export const syncReminders = (db: SQLiteDatabase) => {
   queue = queue.then(() => runSync(db));
   return queue;
-};
+};

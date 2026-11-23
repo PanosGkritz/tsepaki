@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { AppLogo } from '../components/AppLogo';
+import { onIntroSplashDone } from '../components/IntroSplash';
 import { WelcomeIntro } from '../components/WelcomeIntro';
 import { fonts, radius, spacing } from '../constants/theme';
 import { saveSetting } from '../db/settings';
@@ -51,6 +52,16 @@ export default function Welcome() {
   const [showIntro, setShowIntro] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const nameRef = useRef<ComponentRef<typeof TextInput>>(null);
+
+  // Το πληκτρολόγιο ανοίγει αφού φύγει η οθόνη έναρξης, όχι από πίσω της.
+  useEffect(
+    () =>
+      onIntroSplashDone(() => {
+        setTimeout(() => nameRef.current?.focus(), 250);
+      }),
+    [],
+  );
 
   // Μετράμε μόνοι μας το πληκτρολόγιο: το κουμπί κάθεται ακριβώς από πάνω του
   // και η οθόνη κυλάει ώστε να φαίνεται το όνομα που γράφεις.
@@ -133,7 +144,7 @@ export default function Welcome() {
             placeholder={t('settings.namePlaceholder')}
             placeholderTextColor={colors.textMuted}
             style={styles.input}
-            autoFocus
+            ref={nameRef}
             returnKeyType="done"
             onSubmitEditing={finish}
             accessibilityLabel={t('settings.nameLabel')}
@@ -278,4 +289,4 @@ const useStyles = createStyles((colors) => ({
   buttonDisabled: { opacity: 0.4 },
   pressed: { opacity: 0.8 },
   buttonText: { color: colors.onAccent, fontSize: 16, fontFamily: fonts.semibold },
-}));
+}));

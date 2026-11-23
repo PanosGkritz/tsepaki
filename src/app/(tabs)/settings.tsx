@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { AppLogo } from '../../components/AppLogo';
+import { ReminderTimePicker } from '../../components/ReminderTimePicker';
 import { FEEDBACK_EMAIL, PLAY_STORE_URL, PRIVACY_POLICY_URL } from '../../constants/app';
 import { fonts, radius, spacing, type ThemeMode } from '../../constants/theme';
 import { deleteAllData } from '../../db/maintenance';
@@ -42,9 +43,8 @@ import {
 } from '../../lib/notifications';
 import {
   REMINDER_DAY_OPTIONS,
-  REMINDER_HOUR_OPTIONS,
   buildReminders,
-  formatHour,
+  formatTime,
   syncReminders,
 } from '../../lib/reminders';
 import { createStyles } from '../../lib/styles';
@@ -77,7 +77,7 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 const formatReminder = (reminder: Reminder, language: Language) =>
-  `${reminder.title} · ${formatChargeDay(toIsoDate(reminder.date), language)}, ${formatHour(reminder.date.getHours())}`;
+  `${reminder.title} · ${formatChargeDay(toIsoDate(reminder.date), language)}, ${formatTime(reminder.date.getHours(), reminder.date.getMinutes())}`;
 
 export default function Settings() {
   const db = useSQLiteContext();
@@ -130,6 +130,14 @@ export default function Settings() {
   const save = async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
     await saveSetting(db, key, value);
+    await syncReminders(db);
+    await refresh();
+  };
+
+  const saveReminderTime = async (hour: number, minute: number) => {
+    setSettings((current) => ({ ...current, reminderHour: hour, reminderMinute: minute }));
+    await saveSetting(db, 'reminderHour', hour);
+    await saveSetting(db, 'reminderMinute', minute);
     await syncReminders(db);
     await refresh();
   };
@@ -419,17 +427,12 @@ export default function Settings() {
           ))}
         </View>
 
-        <Text style={styles.rowLabel}>{t('settings.time')}</Text>
-        <View style={styles.chips}>
-          {REMINDER_HOUR_OPTIONS.map((hour) => (
-            <Chip
-              key={hour}
-              label={formatHour(hour)}
-              isActive={settings.reminderHour === hour}
-              onPress={() => save('reminderHour', hour)}
-            />
-          ))}
-        </View>
+        <ReminderTimePicker
+          label={t('settings.time')}
+          hour={settings.reminderHour}
+          minute={settings.reminderMinute}
+          onChange={saveReminderTime}
+        />
 
         <View style={styles.row}>
           <Text style={[styles.rowLabel, styles.flex]}>{t('settings.yearly')}</Text>
@@ -672,4 +675,4 @@ const useStyles = createStyles((colors) => ({
   deleteText: { color: colors.warning, fontSize: 15, fontFamily: fonts.medium },
   link: { color: colors.accentBright, fontSize: 14, fontFamily: fonts.medium },
   chevron: { color: colors.textMuted, fontSize: 22, fontFamily: fonts.regular },
-}));
+}));

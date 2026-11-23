@@ -2,8 +2,10 @@ import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { MonthSummaryCard } from '../../components/MonthSummaryCard';
 import { POOF_DURATION } from '../../components/PoofOut';
+import { ProBadge } from '../../components/ProCard';
 import { StillUsingCard } from '../../components/StillUsingCard';
 import { UpcomingCharges } from '../../components/UpcomingCharges';
 import { fonts, spacing } from '../../constants/theme';
@@ -23,7 +25,7 @@ import type { Subscription } from '../../types/subscription';
 export default function Home() {
   const db = useSQLiteContext();
   const styles = useStyles();
-  const { t, language, countFullShared } = usePreferences();
+  const { t, language, countFullShared, isPro } = usePreferences();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [paid, setPaid] = useState(0);
   const [userName, setUserName] = useState('');
@@ -101,9 +103,16 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>{buildGreeting(userName, language)}</Text>
-        <Text style={styles.title}>{t('home.title')}</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <Text style={styles.greeting}>{buildGreeting(userName, language)}</Text>
+          <Text style={styles.title}>{t('home.title')}</Text>
+        </View>
+        {isPro && (
+          <Animated.View entering={FadeIn.duration(300)}>
+            <ProBadge id="homeProBadge" />
+          </Animated.View>
+        )}
       </View>
 
       <MonthSummaryCard
@@ -138,7 +147,8 @@ const useStyles = createStyles((colors) => ({
     paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
-  header: { gap: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  header: { flex: 1, gap: spacing.xs },
   greeting: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular },
   title: { color: colors.text, fontSize: 30, fontFamily: fonts.semibold, letterSpacing: -0.5 },
-}));
+}));
