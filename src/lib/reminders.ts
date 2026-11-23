@@ -96,10 +96,10 @@ const TEMPLATES: Record<Language, Templates> = {
     and: 'και',
     many: '{count} συνδρομές',
     weeklyTitle: 'Η εβδομάδα σου',
-    weeklyBody: 'Αυτή την εβδομάδα φεύγουν συνολικά {amount}: {list}.',
+    weeklyBody: 'Την εβδομάδα που έρχεται φεύγουν συνολικά {amount}: {list}.',
     weeklyMore: 'και άλλες {count}',
     shareRequest: 'Πέρασε η χρέωση. Ζήτα τα μερίδια: {list}.',
-    shareGive: 'Αύριο δώσε τα {amount} σου. Πληρώνει: {name}.',
+    shareGive: 'Αύριο χρεώνεται. Δώσε το μερίδιό σου ({amount}) σε όποιον πληρώνει: {name}.',
   },
   en: {
     weekdayOn: [
@@ -147,10 +147,10 @@ const TEMPLATES: Record<Language, Templates> = {
     and: 'and',
     many: '{count} subscriptions',
     weeklyTitle: 'Your week ahead',
-    weeklyBody: 'This week {amount} goes out in total: {list}.',
+    weeklyBody: 'Next week {amount} goes out in total: {list}.',
     weeklyMore: '{count} more',
     shareRequest: 'The charge went through. Ask for the shares: {list}.',
-    shareGive: 'Tomorrow, give your {amount} to {name}.',
+    shareGive: 'It renews tomorrow. Give your share ({amount}) to {name}, who pays for it.',
   },
 };
 

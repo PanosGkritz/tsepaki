@@ -73,7 +73,10 @@ export const SubscriptionRow = ({
             <Text style={styles.shareText} numberOfLines={1}>
               {share.payer
                 ? t('share.rowPayer', { total, name: share.payer })
-                : t('share.rowTotal', { total, count: share.people.length })}
+                : t(share.people.length === 1 ? 'share.rowTotalOne' : 'share.rowTotal', {
+                    total,
+                    count: share.people.length,
+                  })}
             </Text>
           </View>
         )}

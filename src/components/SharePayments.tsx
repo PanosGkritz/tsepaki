@@ -77,7 +77,10 @@ export const SharePayments = ({ subscription }: SharePaymentsProps) => {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{t('share.paymentsTitle')}</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>{t('share.paymentsTitle')}</Text>
+        {dates.length > 0 && <Text style={styles.empty}>{t('share.paymentsHint')}</Text>}
+      </View>
 
       {dates.length === 0 && <Text style={styles.empty}>{t('share.paymentsEmpty')}</Text>}
 
@@ -196,6 +199,7 @@ const useStyles = createStyles((colors) => ({
     padding: 18,
     gap: spacing.md,
   },
+  header: { gap: 2 },
   title: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.medium },
   empty: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20 },
   charge: { gap: spacing.sm },

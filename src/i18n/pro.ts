@@ -8,8 +8,8 @@ export const proStrings = {
     en: 'All amounts will show in this currency. You can change it anytime in Settings.',
   },
   'currency.settingsHint': {
-    el: 'Αλλάζει μόνο το σύμβολο. Τα ποσά δεν μετατρέπονται, οπότε αν αλλάξεις νόμισμα, διόρθωσε και τις τιμές σου. Οι έτοιμες τιμές του καταλόγου μπαίνουν μόνο σε ευρώ.',
-    en: 'Only the symbol changes. Amounts aren’t converted, so if you switch, update your prices too. Catalog prices are only filled in for euros.',
+    el: 'Αλλάζει μόνο το σύμβολο. Τα ποσά δεν μετατρέπονται: τα 10 € θα γίνουν 10 $. Αν αλλάξεις νόμισμα, διόρθωσε τις τιμές των συνδρομών σου. Οι έτοιμες τιμές του καταλόγου υπάρχουν μόνο σε ευρώ.',
+    en: 'Only the symbol changes. Amounts aren’t converted: €10 becomes $10. If you switch, update your subscription prices. Catalog prices are only available in euros.',
   },
 
   'review.question': { el: 'Το χρησιμοποιείς ακόμα;', en: 'Still using it?' },
@@ -29,14 +29,14 @@ export const proStrings = {
   'review.cancelConfirm': { el: 'Ναι, ακύρωσέ το', en: 'Yes, cancel it' },
   'history.saved': { el: 'Γλίτωσες {amount} φέτος', en: 'You saved {amount} this year' },
   'history.savedNote': {
-    el: 'Όσα θα είχαν φύγει από τις συνδρομές που ακύρωσες.',
-    en: 'What the subscriptions you cancelled would have charged.',
+    el: 'Όσα θα είχαν χρεωθεί φέτος οι συνδρομές που ακύρωσες, αν τις κρατούσες.',
+    en: 'What the subscriptions you cancelled would have charged this year if you’d kept them.',
   },
 
   'share.toggle': { el: 'Τη μοιράζομαι', en: 'I share it' },
   'share.toggleHint': {
-    el: 'Με φίλους ή οικογένεια. Στα σύνολα μετράει μόνο το δικό σου μερίδιο.',
-    en: 'With friends or family. Only your share counts in your totals.',
+    el: 'Αν τη μοιράζεσαι με φίλους ή οικογένεια, χώρισε το ποσό. Στα σύνολά σου θα μετράει μόνο το δικό σου μερίδιο.',
+    en: 'If you split it with friends or family, divide the cost. Only your share will count in your totals.',
   },
   'share.namePlaceholder': { el: 'Όνομα, π.χ. Γιώργος', en: 'Name, e.g. Sam' },
   'share.nameLabel': { el: 'Όνομα ατόμου', en: 'Person’s name' },
@@ -46,7 +46,7 @@ export const proStrings = {
   'share.equal': { el: 'Ίσα', en: 'Equally' },
   'share.custom': { el: 'Δικά μου ποσά', en: 'Custom amounts' },
   'share.me': { el: 'Εσύ', en: 'You' },
-  'share.you': { el: 'εσύ', en: 'you' },
+  'share.you': { el: 'το μερίδιό σου', en: 'your share' },
   'share.payer': { el: 'Ποιος πληρώνει;', en: 'Who pays?' },
   'share.payerMeHint': {
     el: 'Τη μέρα της χρέωσης σου θυμίζω να ζητήσεις τα μερίδια.',
@@ -56,17 +56,28 @@ export const proStrings = {
     el: 'Την προηγούμενη μέρα σου θυμίζω να δώσεις το μερίδιό σου. Πληρώνει: {name}.',
     en: 'The day before, I’ll remind you to give your share to {name}.',
   },
-  'share.rowTotal': { el: 'σύνολο {total} · με {count} ακόμα', en: 'total {total} · with {count} more' },
-  'share.rowPayer': { el: 'σύνολο {total} · πληρώνει: {name}', en: 'total {total} · paid by {name}' },
+  'share.rowTotalOne': {
+    el: 'συνολικά {total} · μαζί με 1 άτομο',
+    en: '{total} in total · shared with 1 person',
+  },
+  'share.rowTotal': {
+    el: 'συνολικά {total} · μαζί με {count} άτομα',
+    en: '{total} in total · shared with {count} people',
+  },
+  'share.rowPayer': { el: 'συνολικά {total} · πληρώνει: {name}', en: '{total} in total · paid by {name}' },
   'share.errorPeople': {
     el: 'Πρόσθεσε τουλάχιστον ένα άτομο ή κλείσε το «Τη μοιράζομαι».',
     en: 'Add at least one person or turn off “I share it”.',
   },
   'share.errorAmounts': {
-    el: 'Τα μερίδια των άλλων ξεπερνούν το συνολικό ποσό.',
-    en: 'The other shares add up to more than the total.',
+    el: 'Τα ποσά των άλλων είναι περισσότερα από τη συνολική τιμή. Μείωσέ τα.',
+    en: 'The other amounts add up to more than the total price. Lower them.',
   },
   'share.paymentsTitle': { el: 'Ποιος σού έδωσε το μερίδιό του', en: 'Who has paid you back' },
+  'share.paymentsHint': {
+    el: 'Πάτα σε κάποιον όταν σου δώσει τα λεφτά του.',
+    en: 'Tap someone once they’ve paid you.',
+  },
   'share.paymentsEmpty': {
     el: 'Μόλις περάσει η πρώτη χρέωση, εδώ σημειώνεις ποιος σού έδωσε το μερίδιό του.',
     en: 'Once the first charge goes through, mark here who has paid you back.',
@@ -83,11 +94,11 @@ export const proStrings = {
     en: 'Only shown in Expo Go until Google Play billing is added.',
   },
   'settings.countFullShared': {
-    el: 'Κοινές: μέτρα όλο το ποσό',
-    en: 'Shared: count the full amount',
+    el: 'Κοινές συνδρομές: δείξε όλο το ποσό',
+    en: 'Shared subscriptions: show the full price',
   },
   'settings.countFullSharedHint': {
-    el: 'Κανονικά στα σύνολα μετράει μόνο το δικό σου μερίδιο. Το ιστορικό κρατάει πάντα το μερίδιό σου.',
-    en: 'Normally only your share counts in totals. History always keeps your share.',
+    el: 'Στα σύνολα θα μετράει όλη η τιμή αντί για το μερίδιό σου. Χρήσιμο αν πληρώνεις εσύ με την κάρτα σου. Το ιστορικό κρατάει πάντα το μερίδιό σου.',
+    en: 'Totals will count the full price instead of your share. Useful if you pay with your own card. History always keeps your share.',
   },
 } satisfies Strings;
